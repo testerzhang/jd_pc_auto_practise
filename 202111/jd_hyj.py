@@ -27,7 +27,7 @@ def wait_time_bar(wait_sec):
     for i in tqdm(range(wait_value)):
         time.sleep(0.1)
 
-    logger.debug("")
+    # logger.debug("")
 
 
 class JD(object):
@@ -85,15 +85,22 @@ class JD(object):
                 search_div = '//android.widget.TextView[contains(@content-desc,"搜索")]'
                 search = self.wait.until(EC.presence_of_element_located((By.XPATH, search_div)))
                 search.click()
+                wait_time_bar(2)
 
                 # source = self.driver.page_source
                 # logger.debug(f"搜索页面的source:{source}")
+                # web_view = self.driver.contexts
+                # logger.debug(web_view)
 
-                # 输入搜索文本
-                search_text_id = 'com.jd.lib.search.feature:id/a3v'
+                # 输入搜索文本，这里目前只能是用ID，xpath解析异常
+                # search_text_id = 'com.jd.lib.search.feature:id/a3v'
+                search_text_id = 'com.jd.lib.search.feature:id/a47'
                 box = self.wait.until(EC.presence_of_element_located((By.ID, search_text_id)))
+
                 # search_text_xpath = '//android.view.View[contains(@content-desc, "搜索框")]'
+                # search_text_xpath = '//android.widget.ImageView[@content-desc="拍照购"]/../android.view.View'
                 # box = self.wait.until(EC.presence_of_element_located((By.XPATH, search_text_xpath)))
+
                 box.set_text("热爱环游记")
 
                 # 点击搜索按钮
@@ -182,7 +189,7 @@ class JD(object):
                     break
                 elif '浏览' in task:
                     init_loop = 0
-                    max_loop = 2
+                    max_loop = 3
                     jump_loop_flag = 0
 
                     while init_loop < max_loop:
@@ -209,6 +216,12 @@ class JD(object):
                             break
                         elif '浏览并加购' in task_second_title_text:
                             logger.warning(f"浏览并加购任务不做")
+                            break
+                        elif '去财富岛' in task_second_title_text:
+                            logger.debug(f"财富岛任务不做")
+                            break
+                        elif '去小程序' in task_second_title_text:
+                            logger.debug(f"去小程序任务不做")
                             break
 
                         try:
@@ -315,6 +328,38 @@ class JD(object):
 
         return
 
+    # 签到页面处理
+    def sign_page(self, sign_div_xpath):
+        try:
+            logger.debug(f"开始点击[点我签到]按钮")
+            # 可能这个位置后续会变
+            # sign_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View/android.view.View[6]'
+
+            sign_div_lists = self.driver.find_element_by_xpath(sign_div_xpath)
+            sign_div_lists.click()
+        except:
+            logger.warning(f"点击[点我签到]按钮点击异常={traceback.format_exc()}")
+        else:
+            # todo: 签到成功后，还要处理一个弹窗，还没测试。
+
+            wait_time_bar(3)
+
+            try:
+                logger.debug(f"开始点击[开心收下]按钮的关闭按钮")
+                # 提醒我明天签到领红包
+                sign_close_flag_xpath = '//android.view.View[text="提醒我明天签到领红包"]'
+                self.driver.find_element_by_xpath(sign_close_flag_xpath)
+
+                sign_close_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View/android.view.View[2]'
+
+                sign_close_div_lists = self.driver.find_element_by_xpath(sign_close_div_xpath)
+                if len(sign_div_lists) > 0:
+                    sign_close_div_lists[0].click()
+            except:
+                logger.warning(f"点击[开心收下]按钮点击异常={traceback.format_exc()}")
+            else:
+                wait_time_bar(2)
+
     #  gzh:testerzhang 点击每日签到
     def do_sign(self):
 
@@ -328,20 +373,8 @@ class JD(object):
         else:
             wait_time_bar(2)
             # 开始点击页面的"点我签到"按钮
-
-            try:
-                logger.debug(f"开始点击[点我签到]按钮")
-                # 可能这个位置后续会变
-                sign_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View/android.view.View[6]'
-
-                sign_div_lists = self.driver.find_element_by_xpath(sign_div_xpath)
-                sign_div_lists.click()
-            except:
-                logger.warning(f"点击[点我签到]按钮点击异常={traceback.format_exc()}")
-            else:
-                # todo: 签到成功后，还要有一个弹窗，暂未处理。
-
-                wait_time_bar(3)
+            sign_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View/android.view.View[6]'
+            self.sign_page(sign_div_xpath)
 
     #  gzh:testerzhang 点击任务列表按钮，然后进入具体的任务列表
     def do_coins(self, button_name):
@@ -369,7 +402,7 @@ class JD(object):
             # 最新任务列表签到
             self.do_task()
 
-    #  gzh:testerzhang 喵星人首页按钮处理
+    #  gzh:testerzhang 首页处理打卡领红包
     def feed_dog(self):
         # 加多一层最大喂养次数，防止循环。
         max_times = 10
@@ -446,6 +479,58 @@ class JD(object):
 
         return
 
+    # 第一次进入页面，弹窗处理
+    def process_windows(self):
+        # todo:判断弹框:继续抽奖
+
+        try:
+            windows_div = '//android.widget.ImageView[content-desc="返回"]'
+            windows_button = self.driver.find_element_by_xpath(windows_div)
+            logger.debug(f"windows_button.text=[{windows_button.text}]")
+            windows_button.click()
+        except NoSuchElementException as msg:
+            logger.warning(f"忽略")
+        except:
+            logger.warning(f"弹窗进行处,异常={traceback.format_exc()}")
+
+        # plus会员弹窗,未测试。
+        plus_flag = 0
+        try:
+            # plus_div = '//android.view.View[text="送您"]'
+            plus_flag_div = '//android.view.View[text="Plus专享"]'
+            plus_flag_button = self.driver.find_element_by_xpath(plus_flag_div)
+            logger.debug(f"plus_flag_button.text=[{plus_flag_button.text}]")
+
+            plus_div = '//android.view.View[text="Plus专享"]/../../following-sibling::android.view.View[1]/android.view.View'
+            plus_button = self.driver.find_element_by_xpath(plus_div)
+            logger.debug(f"plus_button.text=[{plus_button.text}]")
+
+            plus_button.click()
+            plus_flag = 1
+        except NoSuchElementException as msg:
+            # logger.warning(f"未找到plus弹窗，忽略")
+            pass
+        except:
+            logger.warning(f"弹窗进行处,异常={traceback.format_exc()}")
+
+        # 点击plus按钮之后，进入签到弹窗，未测试。
+        if plus_flag == 1:
+            try:
+                sign_flag_div = '//android.view.View[text="每天来签到，得最高111.1元红包"]'
+                sign_flag_button = self.driver.find_element_by_xpath(sign_flag_div)
+                logger.debug(f"sign_flag_button.text=[{sign_flag_button.text}]")
+
+                sign_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View/android.view.View[6]'
+                self.sign_page(sign_div_xpath)
+
+            except NoSuchElementException as msg:
+                # logger.warning(f"未找到plus弹窗，忽略")
+                pass
+            except:
+                logger.warning(f"弹窗进行处,异常={traceback.format_exc()}")
+
+        return plus_flag
+
     #  gzh:testerzhang 进入H5页面
     def do(self):
 
@@ -458,18 +543,10 @@ class JD(object):
         logger.debug("3.准备切换H5页面")
         wait_time_bar(4)
 
-        # todo:判断弹框，关闭
-        try:
-            windows_div = '//android.widget.ImageView[content-desc="返回"]'
-            windows_button = self.driver.find_element_by_xpath(windows_div)
-            logger.debug(f"windows_button.text=[{windows_button.text}]")
-            windows_button.click()
-        except NoSuchElementException as msg:
-            logger.warning(f"忽略")
-        except:
-            logger.warning(f"弹窗进行处,异常={traceback.format_exc()}")
+        logger.debug("4.处理第一次进入页面的弹窗")
+        plus_flag = self.process_windows()
 
-        if config.DO_SIGN_FLAG:
+        if config.DO_SIGN_FLAG and plus_flag == 0:
             # 打开每日签到
             self.do_sign()
 
@@ -477,7 +554,7 @@ class JD(object):
             # 打开任务列表
             self.do_coins('做任务，赚汪汪币')
 
-        # 点击收取生产的喵币
+        # 点击收取生产的汪汪币
         if config.RECEIVE_COINS_FLAG:
             self.click_coin()
 
@@ -495,4 +572,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

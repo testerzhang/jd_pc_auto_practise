@@ -8,9 +8,11 @@ MIAO_LOG = "logs/jd.log"
 DEVICE_NAME = 'xiaomi'
 DEVICE_PORT = '4723'
 
+# 安卓版本
+ANDROID_VERSION = "11"
 DESIRED_CAPS = {
     "platformName": "Android",
-    "platformVersion": "11",
+    "platformVersion": ANDROID_VERSION,
     # "deviceName": "Android Emulator",
     "deviceName": DEVICE_NAME,
     "appPackage": "com.jingdong.app.mall",
