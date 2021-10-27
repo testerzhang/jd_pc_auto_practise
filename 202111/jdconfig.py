@@ -48,6 +48,12 @@ RECEIVE_COINS_FLAG = False
 #DO_DA_KA_FLAG = True
 DO_DA_KA_FLAG = False
 
+# 第6个位置
+WINDOWS_XPATH = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[6]/android.view.View[2]/android.view.View'''
+
+# 第7个位置
+WINDOWS_XPATH2 = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View'''
+
 # 任务列表
 TASK_LIST = [
     '浏览并关注',

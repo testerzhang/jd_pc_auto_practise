@@ -43,6 +43,9 @@ class JD(object):
         self.driver = webdriver.Remote(url, desired_caps)
         self.wait = WebDriverWait(self.driver, config.TIME_OUT)
 
+        self.windows_xpath = config.WINDOWS_XPATH
+        self.windows_xpath2 = config.WINDOWS_XPATH2
+
         logger.debug("1.打开京东")
         wait_time_bar(2)
 
@@ -350,7 +353,7 @@ class JD(object):
                 sign_close_flag_xpath = '//android.view.View[text="提醒我明天签到领红包"]'
                 self.driver.find_element_by_xpath(sign_close_flag_xpath)
 
-                sign_close_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View/android.view.View[2]'
+                sign_close_div_xpath = f'{self.windows_xpath2}/android.view.View[2]'
 
                 sign_close_div_lists = self.driver.find_element_by_xpath(sign_close_div_xpath)
                 if len(sign_div_lists) > 0:
@@ -373,7 +376,7 @@ class JD(object):
         else:
             wait_time_bar(2)
             # 开始点击页面的"点我签到"按钮
-            sign_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View/android.view.View[6]'
+            sign_div_xpath = f'{self.windows_xpath2}/android.view.View[6]'
             self.sign_page(sign_div_xpath)
 
     #  gzh:testerzhang 点击任务列表按钮，然后进入具体的任务列表
@@ -437,18 +440,44 @@ class JD(object):
                 # logger.debug(f"打卡后source:{source}")
 
                 try:
+                    logger.debug(f"尝试点击[写下探索日记]")
+                    # 可能这个位置后续会变
+                    tan_suo_div_xpath = f'{self.windows_xpath}/android.view.View[4]'
+
+                    tan_suo_div_elm = self.driver.find_element_by_xpath(tan_suo_div_xpath)
+                    tan_suo_div_elm.click()
+                except NoSuchElementException as msg:
+                    pass
+                except:
+                    logger.warning(f"点击[写下探索日记]动作异常={traceback.format_exc()}")
+
+                try:
+                    logger.debug(f"看看是不是[探索日记]之后的打卡成功弹窗,点击关闭")
+                    # 可能这个位置后续会变
+                    next_station_div_xpath = f'{self.windows_xpath}/android.view.View[1]'
+
+                    next_station_div_elm = self.driver.find_element_by_xpath(next_station_div_xpath)
+                    next_station_div_elm.click()
+                    wait_time_bar(3)
+                except NoSuchElementException as msg:
+                    pass
+                except:
+                    logger.warning(f"探索日记之后的打卡成功弹窗动作异常={traceback.format_exc()}")
+
+                close_flag = 0
+                try:
                     logger.debug(f"尝试关闭打卡之后的弹窗")
                     # 可能这个位置后续会变
-                    close_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[6]/android.view.View[2]/android.view.View/android.view.View[2]'
+                    close_div_xpath = f'{self.windows_xpath}/android.view.View[2]'
 
                     close_div_elm = self.driver.find_element_by_xpath(close_div_xpath)
                     close_div_elm.click()
+                    close_flag = 1
                 except NoSuchElementException as msg:
                     pass
                 except:
                     logger.warning(f"尝试关闭打卡之后的弹窗动作异常={traceback.format_exc()}")
 
-                # 弹出【去完成】弹窗
                 try:
                     logger.debug("尝试[开心收下]确认之后的弹窗")
                     to_finish_xpath = '//*[contains(@text, "完成以下任务获得大量汪汪币")]'
@@ -461,19 +490,23 @@ class JD(object):
                 except:
                     logger.warning(f"尝试[开心收下]确认之后的弹窗异常={traceback.format_exc()}")
 
-                # 汪汪币不够的时候，弹出任务列表
-                try:
-                    logger.debug("尝试关闭[任务列表]")
-                    task_list_xpath = '//*[contains(@text, "累计任务奖励")]'
-                    task_list_elm = self.driver.find_element_by_xpath(task_list_xpath)
-                    # 点击右上角关闭按钮
-                    self.close_windows()
-                    # 退出
-                    return
-                except NoSuchElementException as msg:
+                if close_flag == 0:
+                    # 汪汪币不够的时候，弹出任务列表
+                    try:
+                        logger.debug("尝试关闭[任务列表]")
+                        task_list_xpath = '//*[contains(@text, "累计任务奖励")]'
+                        task_list_elm = self.driver.find_element_by_xpath(task_list_xpath)
+                        # 点击右上角关闭按钮
+                        self.close_windows()
+                        # 退出
+                        return
+                    except NoSuchElementException as msg:
+                        pass
+                    except:
+                        logger.warning(f"尝试关闭[任务列表]异常={traceback.format_exc()}")
+                else:
+                    # todo: 这里还可能有弹窗,开心收下确认后还会弹出去去做任务页面。
                     pass
-                except:
-                    logger.warning(f"尝试关闭[任务列表]异常={traceback.format_exc()}")
 
             times = times + 1
 
@@ -520,7 +553,7 @@ class JD(object):
                 sign_flag_button = self.driver.find_element_by_xpath(sign_flag_div)
                 logger.debug(f"sign_flag_button.text=[{sign_flag_button.text}]")
 
-                sign_div_xpath = '//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View/android.view.View[6]'
+                sign_div_xpath = f'{self.windows_xpath2}/android.view.View[6]'
                 self.sign_page(sign_div_xpath)
 
             except NoSuchElementException as msg:
