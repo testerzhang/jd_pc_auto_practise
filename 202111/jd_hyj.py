@@ -95,9 +95,10 @@ class JD(object):
                 # web_view = self.driver.contexts
                 # logger.debug(web_view)
 
-                # 输入搜索文本，这里目前只能是用ID，xpath解析异常
+                # 输入搜索文本，这里目前只能是用ID，xpath解析异常 [182,114][942,170]
                 # search_text_id = 'com.jd.lib.search.feature:id/a3v'
-                search_text_id = 'com.jd.lib.search.feature:id/a47'
+                # search_text_id = 'com.jd.lib.search.feature:id/a47'
+                search_text_id = 'com.jd.lib.search.feature:id/a48'
                 box = self.wait.until(EC.presence_of_element_located((By.ID, search_text_id)))
 
                 # search_text_xpath = '//android.view.View[contains(@content-desc, "搜索框")]'
@@ -408,7 +409,7 @@ class JD(object):
     #  gzh:testerzhang 首页处理打卡领红包
     def feed_dog(self):
         # 加多一层最大喂养次数，防止循环。
-        max_times = 10
+        max_times = config.DA_KA_LOOP
 
         logger.debug("欢迎进入【打卡领红包】")
 
@@ -499,7 +500,7 @@ class JD(object):
                         # 点击右上角关闭按钮
                         self.close_windows()
                         # 退出
-                        return
+                        break
                     except NoSuchElementException as msg:
                         pass
                     except:
@@ -524,11 +525,12 @@ class JD(object):
         except NoSuchElementException as msg:
             logger.warning(f"忽略")
         except:
-            logger.warning(f"弹窗进行处,异常={traceback.format_exc()}")
+            logger.warning(f"弹窗进行处理异常={traceback.format_exc()}")
 
         # plus会员弹窗,未测试。
         plus_flag = 0
         try:
+            logger.debug(f"看是否有[Plus弹窗]")
             # plus_div = '//android.view.View[text="送您"]'
             plus_flag_div = '//android.view.View[text="Plus专享"]'
             plus_flag_button = self.driver.find_element_by_xpath(plus_flag_div)
@@ -544,7 +546,7 @@ class JD(object):
             # logger.warning(f"未找到plus弹窗，忽略")
             pass
         except:
-            logger.warning(f"弹窗进行处,异常={traceback.format_exc()}")
+            logger.warning(f"弹窗进行处理异常={traceback.format_exc()}")
 
         # 点击plus按钮之后，进入签到弹窗，未测试。
         if plus_flag == 1:
@@ -560,8 +562,31 @@ class JD(object):
                 # logger.warning(f"未找到plus弹窗，忽略")
                 pass
             except:
-                logger.warning(f"弹窗进行处,异常={traceback.format_exc()}")
+                logger.warning(f"弹窗进行处理异常={traceback.format_exc()}")
 
+        else:
+            try:
+                logger.debug(f'尝试关掉[继续环游]弹窗')
+                draw_div_xpath = f'{self.windows_xpath2}/android.view.View[3]'
+
+                draw_close_div_elm = self.driver.find_element_by_xpath(draw_div_xpath)
+                draw_close_div_elm.click()
+            except NoSuchElementException as msg:
+                logger.warning(f"忽略")
+            except:
+                logger.warning(f"尝试关掉[继续环游]弹窗异常={traceback.format_exc()}")
+
+
+            try:
+                logger.debug(f'尝试关掉[立即抽奖]弹窗')
+                draw_div_xpath = f'{self.windows_xpath2}/android.view.View[2]/android.view.View[2]'
+
+                draw_close_div_elm = self.driver.find_element_by_xpath(draw_div_xpath)
+                draw_close_div_elm.click()
+            except NoSuchElementException as msg:
+                logger.warning(f"忽略")
+            except:
+                logger.warning(f"尝试关掉[立即抽奖]弹窗异常={traceback.format_exc()}")
         return plus_flag
 
     #  gzh:testerzhang 进入H5页面

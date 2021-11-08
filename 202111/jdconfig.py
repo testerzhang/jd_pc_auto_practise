@@ -48,6 +48,9 @@ RECEIVE_COINS_FLAG = False
 #DO_DA_KA_FLAG = True
 DO_DA_KA_FLAG = False
 
+# 打卡领红包 循环执行次数
+DA_KA_LOOP = 10
+
 # 第6个位置
 WINDOWS_XPATH = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[6]/android.view.View[2]/android.view.View'''
 
