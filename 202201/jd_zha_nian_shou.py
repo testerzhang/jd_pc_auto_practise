@@ -3,6 +3,7 @@
 # 公众号:testerzhang
 __author__ = 'testerzhang'
 
+import os
 import time
 import traceback
 
@@ -46,6 +47,11 @@ class JD(object):
         self.windows_xpath = config.WINDOWS_XPATH
         self.windows_xpath2 = config.WINDOWS_XPATH2
 
+        self.except_html = "./except"
+
+        if not os.path.exists(self.except_html):
+            os.makedirs(self.except_html)
+
         logger.debug("1.打开京东")
         wait_time_bar(2)
 
@@ -54,6 +60,11 @@ class JD(object):
         wait_time_bar(5)
         logger.debug("6.关闭app")
         self.driver.quit()
+
+    # 检测是否在当前自动化的app
+    def detect_app(self):
+        if self.driver.current_package != "com.jingdong.app.mall":
+            self.driver.back()
 
     # 判断某些任务是不是直接跳过
     def continue_task(self, content):
@@ -70,59 +81,51 @@ class JD(object):
     def active_page(self):
         search_result = False
 
-        sleep_time = 5
         logger.debug(f"2.查找活动入口")
-        # source = self.driver.page_source
-        # logger.debug(f"首页source:{source}")
 
-        if not config.HOME_XPATH_FLAG:
-            wait_time_bar(sleep_time)
-            logger.debug(f"使用位置来点击入口")
-            # 目前，这个逻辑没去实现。
-            # 每个手机位置不一样，需要根据bounds（(如：[26,1025][540,1290]）重新设定
-            # self.driver.tap([(26, 1025), (540, 1290)], 100)
-            # search_result = True
-        else:
-            try:
-                # 搜索框
-                search_div = '//android.widget.TextView[contains(@content-desc,"搜索")]'
-                search = self.wait.until(EC.presence_of_element_located((By.XPATH, search_div)))
-                search.click()
-                wait_time_bar(2)
+        try:
+            # 搜索框
+            search_div = '//android.widget.TextView[contains(@content-desc,"搜索")]'
+            search_elm = self.wait.until(EC.presence_of_element_located((By.XPATH, search_div)))
+            search_elm.click()
+            wait_time_bar(2)
 
-                # source = self.driver.page_source
-                # logger.debug(f"搜索页面的source:{source}")
-                # web_view = self.driver.contexts
-                # logger.debug(web_view)
+            # 换个思路，拿到动态的resource-id
+            my_regx = '''{temp}content-desc="搜索框,{temp2}resource-id="{search_id}"{temp3}'''
+            regx_result = parse.parse(my_regx, self.driver.page_source)
+            # logger.debug(f"regx_result={regx_result}")
+            if regx_result is None:
+                logger.warning("获取搜索框ID正则匹配失败，退出")
+                raise Exception("获取搜索框ID正则匹配失败，退出")
 
-                # 输入搜索文本，这里目前只能是用ID，xpath解析异常 [182,114][942,170]
-                search_text_id = 'com.jd.lib.search.feature:id/a53'
-                box = self.wait.until(EC.presence_of_element_located((By.ID, search_text_id)))
+            search_text_id = regx_result['search_id']
 
-                # search_text_xpath = '//android.view.View[contains(@content-desc, "搜索框")]'
-                # search_text_xpath = '//android.widget.ImageView[@content-desc="拍照购"]/../android.view.View'
-                # box = self.wait.until(EC.presence_of_element_located((By.XPATH, search_text_xpath)))
+            # 输入搜索文本，这里目前只能是用ID，xpath解析异常
+            # search_text_id = 'com.jd.lib.search.feature:id/a54'
+            box = self.wait.until(EC.presence_of_element_located((By.ID, search_text_id)))
+            box.set_text("炸年兽")
 
-                box.set_text("炸年兽")
+            # 点击搜索按钮
+            search_btn_xpath = '//android.widget.TextView[@content-desc="搜索，按钮"]'
+            button = self.wait.until(EC.presence_of_element_located((By.XPATH, search_btn_xpath)))
+            button.click()
 
-                # 点击搜索按钮
-                search_btn_xpath = '//android.widget.TextView[@content-desc="搜索，按钮"]'
-                button = self.wait.until(EC.presence_of_element_located((By.XPATH, search_btn_xpath)))
-                button.click()
-
-                door_xpath = '//androidx.recyclerview.widget.RecyclerView/android.widget.RelativeLayout[@index="2"]'
-                door_button = self.wait.until(EC.presence_of_element_located((By.XPATH, door_xpath)))
-                door_button.click()
-                search_result = True
-                logger.debug("进入活动入口")
-            except:
-                raise Exception("找不到活动入口")
-
-        if search_result:
+            door_xpath = '//androidx.recyclerview.widget.RecyclerView/android.widget.RelativeLayout[@index="2"]'
+            door_button = self.wait.until(EC.presence_of_element_located((By.XPATH, door_xpath)))
+            door_button.click()
             # 加载新页面时间
             wait_time_bar(5)
+            logger.debug("进入活动入口")
+        except NoSuchElementException:
+            raise Exception("找不到活动入口")
+            filename = f"{self.except_html}/search.html"
+            self.write_html(filename)
+        except:
+            raise Exception("元素定位了，但是找不到活动入口")
+            filename = f"{self.except_html}/search-except.html"
+            self.write_html(filename)
 
-        return search_result
+        return True
 
     def close_windows(self):
         try:
@@ -137,8 +140,20 @@ class JD(object):
 
     #  gzh:testerzhang 做任务列表，还不能做全部，后续再看看。
     def do_task(self):
-        # source = self.driver.page_source
-        # logger.debug(f"做任务source:{source}")
+        try:
+            logger.debug(f"检测是否进入[任务列表]")
+            flag_div = f'//*[@text="累计任务奖励"]'
+            self.driver.find_elements(By.XPATH, flag_div)
+
+            if config.DEBUG_HTML:
+                filename = f"{self.except_html}/task-temp.html"
+                self.write_html(filename)
+        except NoSuchElementException:
+            raise Exception("没成功进入【任务列表】，退出")
+            return
+        except:
+            logger.warning(f"检测是否进入[任务列表]异常={traceback.format_exc()}")
+            return
 
         # 配置文件配置需要执行的任务清单
         task_list = config.TASK_LIST
@@ -165,7 +180,6 @@ class JD(object):
                             wait_time_bar(2)
 
                             # todo:关闭弹窗
-                            # text="+500汪汪币"
                             close_tip_div = f'//android.view.View[contains(@text, "+")]'
                             close_tip_lists = self.driver.find_elements(By.XPATH, close_tip_div)
                             if len(close_tip_lists) > 0:
@@ -177,13 +191,13 @@ class JD(object):
                                     # todo:不确定是否可以正常
                                     self.close_windows()
 
-                            wait_time_bar(2)
+                                wait_time_bar(2)
 
 
                     except:
                         logger.warning(f"[去领取]异常={traceback.format_exc()}")
                     else:
-                        wait_time_bar(8)
+                        wait_time_bar(5)
                     break
                 elif task in ["关闭"]:
                     self.close_windows()
@@ -415,8 +429,15 @@ class JD(object):
                             # 当前节点是index=2，查找节点android.view.View index="3"
                             program_flag = 0
                             try:
-                                task_title_div = f'{task_second_title_div}//following-sibling::android.view.View[1]'
+                                # task_title_div = f'{task_second_title_div}//following-sibling::android.view.View[1]'
+                                task_title_div = f'{task_second_title_div}/../android.view.View[@index="3"]'
+                                # logger.debug(f"task_title_div={task_title_div}")
                                 task_button_elm = self.driver.find_element(By.XPATH, task_title_div)
+
+                                if config.DEBUG_HTML:
+                                    logger.debug(f'第1次查找:{task_button_elm.get_attribute("bounds")}')
+                                    filename = f"{self.except_html}/program_to_do-1.html"
+                                    self.write_html(filename)
                             except NoSuchElementException:
                                 logger.warning(f"没找到【去完成】按钮")
                                 program_flag = 1
@@ -424,12 +445,19 @@ class JD(object):
                                 logger.warning(f"该任务:【{task}】获取任务按钮异常,不执行。异常={traceback.format_exc()}")
                                 break
 
+                            # todo:修正了上一个定位，可能这个不需要了。
                             if program_flag == 1:
                                 try:
                                     task_title_div = f'{task_second_title_div}//following-sibling::android.view.View[2]'
                                     task_button_elm = self.driver.find_element(By.XPATH, task_title_div)
+                                    if config.DEBUG_HTML:
+                                        logger.debug(f'第2次查找:{task_button_elm.get_attribute("bounds")}')
+                                        filename = f"{self.except_html}/program_to_do-2.html"
+                                        self.write_html(filename)
                                 except NoSuchElementException:
                                     logger.warning(f"再次没找到【去完成】按钮")
+                                    filename = f"{self.except_html}/program_to_do_not_found.html"
+                                    self.write_html(filename)
                                     break
                                 except:
                                     logger.warning(f"该任务:【{task}】再次获取任务按钮异常,不执行。异常={traceback.format_exc()}")
@@ -437,32 +465,45 @@ class JD(object):
 
                             # 开始任务点击
                             logger.debug(f"任务副标题={task_second_title_text},任务标题={task_title_elm_text}:开始执行")
-                            logger.debug(task_button_elm.get_attribute("bounds"))
+                            # logger.debug(task_button_elm.get_attribute("bounds"))
                             task_button_elm.click()
 
                             # todo: 可能会有bug
-                            wait_time_bar(5)
-                            if self.driver.current_package != "com.jingdong.app.mall":
-                                self.driver.back()
+                            wait_time_bar(3)
+                            self.detect_app()
 
                             wait_time_bar(3)
-                            if self.driver.current_package != "com.jingdong.app.mall":
-                                self.driver.back()
+                            self.detect_app()
 
                             logger.debug(f"返回一下，然后稍微休息")
-                            if self.driver.current_package != "com.jingdong.app.mall":
-                                self.driver.back()
-                            wait_time_bar(5)
+                            self.detect_app()
+                            wait_time_bar(6)
 
                             now_times = now_times + 1
 
                             # 更新任务正标题
                             try:
+                                wait_time_bar(2)
                                 task_title_div = f'{task_second_title_div}//preceding-sibling::android.view.View[1]'
                                 task_title_elm = self.driver.find_element(By.XPATH, task_title_div)
                                 # 获取标题
                                 task_title_elm_text = task_title_elm.text
                                 logger.debug(f"任务标题={task_title_elm_text}")
+                            except NoSuchElementException:
+                                try:
+                                    # 年货特卖
+                                    logger.debug(f"查找是否含有【好货特卖】文字")
+                                    nian_div_xpath = f'//android.widget.TextView[@text="好货特卖"]'
+                                    nian_sign_div_elm = self.driver.find_element(By.XPATH, nian_div_xpath)
+                                    if nian_sign_div_elm is not None:
+                                        logger.debug(f"从小程序跳转回来，还需要再返回一次")
+                                        self.driver.back()
+
+                                except NoSuchElementException:
+                                    logger.warning(f"没找到任务标题信息")
+                                    filename = f"{self.except_html}/program_jump_back_title.html"
+                                    self.write_html(filename)
+
                             except:
                                 logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
                                 # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
@@ -494,8 +535,10 @@ class JD(object):
             invite_div = '''//android.view.View[@resource-id="app"]/android.view.View/android.view.View/android.view.View[9]/android.view.View[2]'''
             invite_button_elm = self.driver.find_element(By.XPATH, invite_div)
             invite_button_elm.click()
+
+            wait_time_bar(5)
             # todo:未测试，从微信返回
-            self.driver.back()
+            self.detect_app()
         except:
             logger.warning(f"点击【邀3人立领现金】按钮异常,不执行")
             return
@@ -523,8 +566,8 @@ class JD(object):
     def write_html(self, filename):
         source = self.driver.page_source
         # logger.debug(f"页面source:{source}")
-        file_name = f"doc/{filename}"
-        with open(file_name, 'w') as f:
+        # file_name = f"doc/{filename}"
+        with open(filename, 'w') as f:
             f.write(source)
 
     #  gzh:testerzhang 点击每日签到
@@ -540,7 +583,8 @@ class JD(object):
                 logger.debug(f"【今日已签到】，不需要签到")
                 return
         except NoSuchElementException as msg:
-            pass
+            filename = f"{self.except_html}/sign_detail.html"
+            self.write_html(filename)
         except:
             logger.warning(f"查找【今日已签到】文字点击异常={traceback.format_exc()}")
 
@@ -550,6 +594,9 @@ class JD(object):
             sign_div_xpath = f'//android.view.View[@text="签到领红包签到领红包"]'
             sign_div_lists = self.driver.find_element(By.XPATH, sign_div_xpath)
             sign_div_lists.click()
+        except NoSuchElementException as msg:
+            filename = f"{self.except_html}/sign_sign.html"
+            self.write_html(filename)
         except:
             logger.warning(f"点击[签到领红包签到领红包]按钮点击异常={traceback.format_exc()}")
         else:
@@ -576,7 +623,8 @@ class JD(object):
                     close_div_elm = self.driver.find_element(By.XPATH, close_div_xpath)
                     close_div_elm.click()
                 except NoSuchElementException as msg:
-                    pass
+                    filename = f"{self.except_html}/sign_after_close.html"
+                    self.write_html(filename)
                 except:
                     logger.warning(f"点击[关闭]动作异常={traceback.format_exc()}")
 
@@ -594,7 +642,9 @@ class JD(object):
             if sign_div_elm is not None:
                 logger.debug(f"点击【点我签到】按钮")
                 sign_div_elm.click()
-
+        except NoSuchElementException as msg:
+            filename = f"{self.except_html}/sign_home_text.html"
+            self.write_html(filename)
         except:
             logger.warning(f"点击[点我签到]按钮点击异常={traceback.format_exc()}")
         else:
@@ -609,6 +659,10 @@ class JD(object):
                 sign_close_div_elm = self.driver.find_element(By.XPATH, sign_close_div_xpath)
                 if sign_div_elm is not None:
                     sign_close_div_elm.click()
+            except Exception as msg:
+                logger.warning("找不到【开心收下】按钮")
+                filename = f"{self.except_html}/sign_finish_happy.html"
+                self.write_html(filename)
             except:
                 logger.warning(f"点击[开心收下]按钮点击异常={traceback.format_exc()}")
             else:
@@ -627,8 +681,14 @@ class JD(object):
                 return
 
             button_div_lists[-1].click()
+        except Exception as msg:
+            logger.warning(f"找不到【{button_name}】按钮")
+            filename = f"{self.except_html}/tasks_list_door.html"
+            self.write_html(filename)
         except:
             logger.warning(f"【{button_name}】点击异常={traceback.format_exc()}")
+            filename = f"{self.except_html}/tasks_list_door-other.html"
+            self.write_html(filename)
         else:
             wait_time_bar(3)
             # 最新任务列表签到
@@ -639,7 +699,8 @@ class JD(object):
         # 加多一层最大次数，防止循环。
         max_times = config.DA_KA_LOOP
 
-        logger.debug("开始集爆竹炸年兽")
+        # 检测当前app
+        self.detect_app()
 
         times = 1
         logger.debug(f"开始执行，最大执行次数={max_times}次")
@@ -658,6 +719,8 @@ class JD(object):
                 self.driver.find_element(By.XPATH, feed_div).click()
             except NoSuchElementException:
                 logger.warning(f"无法找到【集爆竹炸年兽】这个元素")
+                filename = f"{self.except_html}/home_bomb-{times}.html"
+                self.write_html(filename)
                 # 可能是因为弹窗了，暂时没修复。
                 # logger.debug(f"返回一下")
                 break
@@ -667,7 +730,7 @@ class JD(object):
             else:
                 wait_time_bar(5)
                 # todo: 只处理了两种弹窗，其他弹窗，后续再搞。
-
+                # 还有 立即完成,开启下一站
                 try:
                     logger.debug(f"尝试点击[开心收下]弹窗")
                     # 开心收下 弹窗
@@ -676,7 +739,8 @@ class JD(object):
                     if receive_div_elm is not None:
                         receive_div_elm.click()
                 except NoSuchElementException:
-                    pass
+                    filename = f"{self.except_html}/home_bomb-happy-{times}.html"
+                    self.write_html(filename)
                 except:
                     logger.warning(f"点击[开心收下]按钮点击异常={traceback.format_exc()}")
 

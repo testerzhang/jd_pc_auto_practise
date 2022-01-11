@@ -25,11 +25,11 @@ DESIRED_CAPS = {
     "resetKeyboard": True
 }
 
+# 调试写入html
+DEBUG_HTML = False
+
 # 找不到元素的时间
 TIME_OUT = 10
-
-# 首页是否使用XPATH找入口
-HOME_XPATH_FLAG = True
 
 # 第一次处理弹窗
 # FIRST_WINDOWS_FLAG = True
