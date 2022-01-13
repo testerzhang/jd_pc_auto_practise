@@ -52,8 +52,24 @@ class JD(object):
         if not os.path.exists(self.except_html):
             os.makedirs(self.except_html)
 
+        self.finish_task_skip = []
+
         logger.debug("1.打开京东")
         wait_time_bar(2)
+
+    # 点击中间区域位置
+    def click_screen_middle(self):
+        screen_size = self.driver.get_window_size()
+        logger.debug(f"手机屏幕大小={screen_size}")
+        # 屏幕的宽度 width
+        x = screen_size['width']
+        # 屏幕的高度 height
+        y = screen_size['height']
+        start_x = x / 2
+        start_y = y / 2
+        positions = [(start_x, start_y), (start_x, start_y)]
+        logger.debug(f"点击屏幕位置={positions}")
+        self.driver.tap(positions, 100)
 
     # 关闭
     def close(self):
@@ -106,13 +122,19 @@ class JD(object):
             box.set_text("炸年兽")
 
             # 点击搜索按钮
+            logger.debug(f"点击搜索按钮")
             search_btn_xpath = '//android.widget.TextView[@content-desc="搜索，按钮"]'
             button = self.wait.until(EC.presence_of_element_located((By.XPATH, search_btn_xpath)))
             button.click()
+            wait_time_bar(5)
 
-            door_xpath = '//androidx.recyclerview.widget.RecyclerView/android.widget.RelativeLayout[@index="2"]'
-            door_button = self.wait.until(EC.presence_of_element_located((By.XPATH, door_xpath)))
-            door_button.click()
+            # 废弃寻找元素
+            # door_xpath = '//androidx.recyclerview.widget.RecyclerView/android.widget.RelativeLayout[@index="2"]'
+            # door_button = self.wait.until(EC.presence_of_element_located((By.XPATH, door_xpath)))
+            # door_button.click()
+
+            # 屏幕点击位置进入活动
+            self.click_screen_middle()
             # 加载新页面时间
             wait_time_bar(5)
             logger.debug("进入活动入口")
@@ -137,6 +159,94 @@ class JD(object):
         except:
             logger.warning(f"点击关闭异常")
             # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
+
+    # task必须是副标题的内容
+    def print_task_detail(self, task):
+        continue_flag = True
+        task_title_xpath = ""
+        task_second_title_xpath = ""
+        task_title_text = ""
+        task_second_title_text = ""
+        try:
+            logger.debug(f"检查任务:【{task}】是否存在")
+            task_second_title_xpath = f'//*[contains(@text, "{task}")]'
+            task_second_title = self.driver.find_element(By.XPATH, task_second_title_xpath)
+            task_second_title_text = task_second_title.text
+            logger.debug(f"任务副标题={task_second_title_text}")
+        except:
+            logger.warning(f"该任务:【{task}】不执行")
+            continue_flag = False
+            return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+
+        try:
+            task_title_xpath = f'{task_second_title_xpath}//preceding-sibling::android.view.View[1]'
+            task_title_elm = self.driver.find_element(By.XPATH, task_title_xpath)
+            # 获取标题
+            task_title_text = task_title_elm.text
+            logger.debug(f"任务标题={task_title_text}")
+        except NoSuchElementException:
+            continue_flag = False
+            filename = f"{self.except_html}/获取任务主标题-不存在.html"
+            self.write_html(filename)
+            return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+        except:
+            logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
+            continue_flag = False
+            return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+
+        # 判断是否任务跳过
+        is_continue = self.continue_task(task_title_text)
+
+        if not is_continue:
+            logger.warning(f"满足跳过任务关键字，退出2")
+            continue_flag = False
+            return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+
+        return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+
+    # task必须是主标题的内容
+    def print_task_detail2(self, task):
+        continue_flag = True
+        task_title_xpath = ""
+        task_second_title_xpath = ""
+        task_title_text = ""
+        task_second_title_text = ""
+        try:
+            logger.debug(f"检查任务:【{task}】是否存在")
+            task_title_xpath = f'//*[contains(@text, "{task}")]'
+            task_title = self.driver.find_element(By.XPATH, task_title_xpath)
+            task_title_text = task_title.text
+            logger.debug(f"任务主标题={task_title_text}")
+        except:
+            logger.warning(f"该任务:【{task}】不执行")
+            continue_flag = False
+            return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+
+        try:
+            task_second_title_xpath = f'{task_title_xpath}//following-sibling::android.view.View[1]'
+            task_second_title_elm = self.driver.find_element(By.XPATH, task_second_title_xpath)
+            # 获取标题
+            task_second_title_text = task_second_title_elm.text
+            logger.debug(f"任务副标题={task_second_title_text}")
+        except NoSuchElementException:
+            continue_flag = False
+            filename = f"{self.except_html}/获取任务副标题-不存在.html"
+            self.write_html(filename)
+            return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+        except:
+            logger.warning(f"该任务:【{task}】获取任务副标题异常,不执行")
+            continue_flag = False
+            return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+
+        # 判断是否任务跳过
+        is_continue = self.continue_task(task_title_text)
+
+        if not is_continue:
+            logger.warning(f"满足跳过任务关键字，退出2")
+            continue_flag = False
+            return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
+
+        return continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text
 
     #  gzh:testerzhang 做任务列表，还不能做全部，后续再看看。
     def do_task(self):
@@ -166,9 +276,6 @@ class JD(object):
 
                 if task in ["去领取"]:
                     try:
-                        # source = self.driver.page_source
-                        # logger.debug(f"做任务source:{source}")
-
                         progress_div = f'//*[@text="累计任务奖励"]/../android.view.View[3]/android.view.View/android.view.View'
                         progress_elm_lists = self.driver.find_elements(By.XPATH, progress_div)
                         logger.debug(f"找到[去领取]区域长度={len(progress_elm_lists)}")
@@ -179,7 +286,6 @@ class JD(object):
                             progress_elm.click()
                             wait_time_bar(2)
 
-                            # todo:关闭弹窗
                             close_tip_div = f'//android.view.View[contains(@text, "+")]'
                             close_tip_lists = self.driver.find_elements(By.XPATH, close_tip_div)
                             if len(close_tip_lists) > 0:
@@ -188,12 +294,13 @@ class JD(object):
                                 logger.debug(f"tips={tips}")
                                 if '爆竹' in tips:
                                     logger.debug(f"关闭弹窗")
-                                    # todo:不确定是否可以正常
                                     self.close_windows()
 
                                 wait_time_bar(2)
 
-
+                    except NoSuchElementException:
+                        filename = f"{self.except_html}/lingqu.html"
+                        self.write_html(filename)
                     except:
                         logger.warning(f"[去领取]异常={traceback.format_exc()}")
                     else:
@@ -201,6 +308,189 @@ class JD(object):
                     break
                 elif task in ["关闭"]:
                     self.close_windows()
+
+                    break
+                elif task in ["去组队可得"]:
+                    continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text = self.print_task_detail(
+                        task)
+                    if not continue_flag:
+                        break
+
+                    try:
+                        logger.debug(f"开始【{task}】任务点击")
+                        task_button_do_xpath = f'{task_second_title_xpath}/following-sibling::android.view.View[1]'
+                        task_button_do_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
+                        task_button_do_elm.click()
+
+                    except NoSuchElementException:
+                        filename = f"{self.except_html}/join_group_no.html"
+                        self.write_html(filename)
+                    except:
+                        logger.warning(f"该任务:【{task}】获取任务按钮异常,不执行")
+                        break
+
+                    break
+                elif task in ["去种草城"]:
+                    # todo: 只有一次种草城
+                    init_loop = 0
+                    max_loop = 1
+                    jump_loop_flag = 0
+
+                    while init_loop < max_loop:
+                        init_loop = init_loop + 1
+
+                        if jump_loop_flag == 1:
+                            logger.debug(f"超过循环次数，退出该类任务。")
+                            break
+
+                        continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text = self.print_task_detail2(
+                            task)
+                        if not continue_flag:
+                            break
+
+                        # 开始点击
+                        result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_text}")
+                        now_times = int(result['now_times'])
+                        total_times = 3
+                        logger.debug(f"now_times={now_times},total_times={total_times}")
+                        if now_times == total_times and total_times > 0:
+                            continue
+                        else:
+                            while now_times < total_times:
+                                logger.debug(f"开始【{task}】任务now_times={now_times}点击")
+
+                                # todo:检测页面是否已经完成任务了
+
+                                try:
+                                    task_button_do_xpath = f'{task_second_title_xpath}/following-sibling::android.view.View[1]'
+                                    task_button_do_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
+                                    task_button_do_elm.click()
+
+                                except NoSuchElementException:
+                                    filename = f"{self.except_html}/互动种草城-点击-{now_times}-no-found.html"
+                                    self.write_html(filename)
+                                    break
+                                except:
+                                    logger.warning(f"该任务:【{task}】获取任务按钮异常,不执行")
+                                    break
+
+                                wait_time_bar(3)
+                                # 检测页面是否含有"当前页点击浏览4个商品领爆竹"文字
+                                logger.debug(f"检测页面是否有关键字")
+                                source = self.driver.page_source
+                                find_flag = source.find("互动种草城")
+                                if find_flag == -1:
+                                    logger.warning(f"没找到【互动种草城】关键字，退出任务")
+                                    break
+
+                                # 执行4次
+                                shop_success = True
+                                for i in range(1, 4):
+                                    try:
+                                        logger.debug(f"开始第{i}次访问店铺")
+                                        to_finish_xpath = f'//android.view.View[contains(@text, "去完成去完成")]'
+                                        to_finish_elm = self.driver.find_element(By.XPATH, to_finish_xpath)
+                                        to_finish_elm.click()
+                                    except NoSuchElementException:
+                                        shop_success = False
+                                        filename = f"{self.except_html}/互动种草城-店铺-{i}.html"
+                                        self.write_html(filename)
+                                        break
+                                    except:
+                                        shop_success = False
+                                        logger.warning(f"点击店铺异常={traceback.format_exc()}")
+                                        break
+
+                                    wait_time_bar(1)
+                                    logger.debug("从详情页返回")
+                                    self.driver.back()
+                                    wait_time_bar(2)
+
+                                if shop_success:
+                                    logger.debug("返回任务列表")
+                                    self.driver.back()
+
+                                now_times = now_times + 1
+
+                    break
+                elif '累计浏览' == task:
+                    init_loop = 0
+                    max_loop = 3
+                    jump_loop_flag = 0
+
+                    while init_loop < max_loop:
+                        init_loop = init_loop + 1
+
+                        if jump_loop_flag == 1:
+                            logger.debug(f"超过循环次数，退出该类任务。")
+                            break
+
+                        continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text = self.print_task_detail(
+                            task)
+                        if not continue_flag:
+                            break
+
+                        # 开始点击
+                        result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_text}")
+                        now_times = int(result['now_times'])
+                        total_times = int(result['total_times'])
+                        logger.debug(f"now_times={now_times},total_times={total_times}")
+                        if now_times == total_times and total_times > 0:
+                            continue
+                        else:
+                            while now_times < total_times:
+                                try:
+                                    logger.debug(f"开始【{task}】任务now_times={now_times}点击")
+                                    task_button_do_xpath = f'{task_second_title_xpath}/following-sibling::android.view.View[1]'
+                                    task_button_do_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
+                                    task_button_do_elm.click()
+
+                                except NoSuchElementException:
+                                    filename = f"{self.except_html}/累计浏览-点击浏览-{now_times}-no-found.html"
+                                    self.write_html(filename)
+                                    break
+                                except:
+                                    logger.warning(f"该任务:【{task}】获取任务按钮异常,不执行")
+                                    break
+
+                                wait_time_bar(3)
+                                # 检测页面是否含有"当前页点击浏览4个商品领爆竹"文字
+                                logger.debug(f"检测页面是否有关键字")
+                                source = self.driver.page_source
+                                find_flag = source.find("当前页点击浏览4个商品领爆竹")
+                                if find_flag == -1:
+                                    logger.warning(f"没找到【当前页点击浏览4个商品领爆竹】关键字，退出任务")
+                                    break
+
+                                # 执行4次
+                                browse_success = True
+                                for i in range(1, 5):
+                                    try:
+                                        logger.debug(f"开始第{i}次浏览商品")
+                                        goods_views_xpath = f'//android.view.View[@resource-id="root"]/android.view.View[2]/android.view.View[{i}]'
+                                        # logger.debug(f"goods_views_xpath={goods_views_xpath}")
+                                        goods_views_elm = self.driver.find_element(By.XPATH, goods_views_xpath)
+                                        goods_views_elm.click()
+                                    except NoSuchElementException:
+                                        browse_success = False
+                                        filename = f"{self.except_html}/累计浏览-商品-{i}.html"
+                                        self.write_html(filename)
+                                        break
+                                    except:
+                                        browse_success = False
+                                        logger.warning(f"点击商品异常={traceback.format_exc()}")
+                                        break
+
+                                    wait_time_bar(1)
+                                    logger.debug("从商品详情页返回")
+                                    self.driver.back()
+                                    wait_time_bar(2)
+
+                                if browse_success:
+                                    logger.debug("返回任务列表")
+                                    self.driver.back()
+
+                                now_times = now_times + 1
 
                     break
                 elif '浏览' in task:
@@ -215,16 +505,9 @@ class JD(object):
                             logger.debug(f"超过循环次数，退出该类任务。")
                             break
 
-                        try:
-                            logger.debug(f"检查任务:【{task}】是否存在")
-                            # task_div = f'//*[@text="{task}"]'
-                            task_second_title_div = f'//*[contains(@text, "{task}")]'
-                            task_second_title = self.driver.find_element(By.XPATH, task_second_title_div)
-                            task_second_title_text = task_second_title.text
-                            logger.debug(f"任务副标题={task_second_title_text}")
-                        except:
-                            logger.warning(f"该任务:【{task}】不执行")
-                            # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
+                        continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text = self.print_task_detail(
+                            task)
+                        if not continue_flag:
                             break
 
                         if '成功入会并浏览可得' in task_second_title_text:
@@ -240,26 +523,8 @@ class JD(object):
                             logger.debug(f"去小程序任务不做")
                             break
 
-                        try:
-                            task_title_div = f'{task_second_title_div}//preceding-sibling::android.view.View[1]'
-                            task_title_elm = self.driver.find_element(By.XPATH, task_title_div)
-                            # 获取标题
-                            task_title_elm_text = task_title_elm.text
-                            logger.debug(f"任务标题={task_title_elm_text}")
-                        except:
-                            logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
-                            # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
-                            break
-
-                        # 判断是否任务跳过
-                        is_continue = self.continue_task(task_title_elm_text)
-
-                        if not is_continue:
-                            logger.warning(f"满足跳过任务关键字，退出2")
-                            continue
-
                         # 开始点击
-                        result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_elm_text}")
+                        result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_text}")
                         now_times = int(result['now_times'])
                         total_times = int(result['total_times'])
                         logger.debug(f"now_times={now_times},total_times={total_times}")
@@ -269,8 +534,8 @@ class JD(object):
                             while now_times < total_times:
                                 # 当前节点是index=2，查找节点android.view.View index="3"
                                 try:
-                                    task_title_div = f'{task_second_title_div}//following-sibling::android.view.View[1]'
-                                    task_button_elm = self.driver.find_element(By.XPATH, task_title_div)
+                                    task_button_do_xpath = f'{task_second_title_xpath}//following-sibling::android.view.View[1]'
+                                    task_button_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
                                 except:
                                     logger.warning(f"该任务:【{task}】获取任务按钮异常,不执行")
                                     # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
@@ -278,70 +543,57 @@ class JD(object):
                                     break
 
                                 # 开始任务点击
-                                logger.debug(f"任务副标题={task_second_title_text},任务标题={task_title_elm_text}:开始执行")
+                                logger.debug(f"任务副标题={task_second_title_text},任务标题={task_title_text}:开始执行")
                                 task_button_elm.click()
 
-                                if '直播间' in task_title_elm_text:
+                                if '直播间' in task_title_text:
                                     # 直播时间更长
                                     wait_time_bar(5 + 20)
                                     logger.debug(f"关闭关注主播弹窗")
                                     self.driver.back()
+                                elif '去京东金榜' in task_title_text:
+                                    wait_time_bar(5)
+                                elif '去种草城' in task_title_text:
+                                    jump_loop_flag = 1
+                                    break
+                                elif '浏览并关注可得' in task_second_title_text:
+                                    wait_time_bar(5)
                                 else:
                                     wait_time_bar(5 + 10)
 
-                                logger.debug(f"返回一下，然后稍微休息")
-                                self.driver.back()
+                                if '去京东金榜' in task_title_text:
+                                    logger.warning(f"尝试点击左上角返回按钮，如果无效，需要手工执行")
+
+                                    div_xpath = '//*[@resource-id="com.jd.lib.RankingList.feature:id/q"]'
+                                    self.only_click("去京东金榜", div_xpath, times=0)
+                                else:
+                                    logger.debug(f"返回一下，然后稍微休息")
+                                    self.driver.back()
+
                                 wait_time_bar(3)
 
                                 now_times = now_times + 1
 
                                 # 更新任务正标题
                                 try:
-                                    task_title_div = f'{task_second_title_div}//preceding-sibling::android.view.View[1]'
-                                    task_title_elm = self.driver.find_element(By.XPATH, task_title_div)
+                                    task_title_xpath = f'{task_second_title_xpath}//preceding-sibling::android.view.View[1]'
+                                    task_title_elm = self.driver.find_element(By.XPATH, task_title_xpath)
                                     # 获取标题
                                     task_title_elm_text = task_title_elm.text
                                     logger.debug(f"任务标题={task_title_elm_text}")
                                 except:
                                     logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
-                                    # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
                                     continue
 
                     break
                 elif '城城' in task:
-
-                    try:
-                        logger.debug(f"检查任务:【{task}】是否存在")
-                        # task_div = f'//*[@text="{task}"]'
-                        task_second_title_div = f'//*[contains(@text, "{task}")]'
-                        task_second_title = self.driver.find_element(By.XPATH, task_second_title_div)
-                        task_second_title_text = task_second_title.text
-                        logger.debug(f"任务副标题={task_second_title_text}")
-                    except:
-                        logger.warning(f"该任务:【{task}】不执行")
-                        # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
-                        break
-
-                    try:
-                        task_title_div = f'{task_second_title_div}//preceding-sibling::android.view.View[1]'
-                        task_title_elm = self.driver.find_element(By.XPATH, task_title_div)
-                        # 获取标题
-                        task_title_elm_text = task_title_elm.text
-                        logger.debug(f"任务标题={task_title_elm_text}")
-                    except:
-                        logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
-                        # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
-                        break
-
-                    # 判断是否任务跳过
-                    is_continue = self.continue_task(task_title_elm_text)
-
-                    if not is_continue:
-                        logger.warning(f"满足跳过任务关键字，退出2")
+                    continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text = self.print_task_detail(
+                        task)
+                    if not continue_flag:
                         break
 
                     # 开始点击
-                    result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_elm_text}")
+                    result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_text}")
                     now_times = int(result['now_times'])
                     total_times = int(result['total_times'])
                     logger.debug(f"now_times={now_times},total_times={total_times}")
@@ -351,16 +603,14 @@ class JD(object):
                         while now_times < total_times:
                             # 当前节点是index=2，查找节点android.view.View index="3"
                             try:
-                                task_title_div = f'{task_second_title_div}//following-sibling::android.view.View[1]'
-                                task_button_elm = self.driver.find_element(By.XPATH, task_title_div)
+                                task_button_do_xpath = f'{task_second_title_xpath}//following-sibling::android.view.View[1]'
+                                task_button_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
                             except:
                                 logger.warning(f"该任务:【{task}】获取任务按钮异常,不执行")
-                                # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
-                                jump_loop_flag = 1
                                 break
 
                             # 开始任务点击
-                            logger.debug(f"任务副标题={task_second_title_text},任务标题={task_title_elm_text}:开始执行")
+                            logger.debug(f"任务副标题={task_second_title_text},任务标题={task_title_text}:开始执行")
                             task_button_elm.click()
 
                             wait_time_bar(6)
@@ -374,51 +624,24 @@ class JD(object):
 
                             # 更新任务正标题
                             try:
-                                task_title_div = f'{task_second_title_div}//preceding-sibling::android.view.View[1]'
-                                task_title_elm = self.driver.find_element(By.XPATH, task_title_div)
+                                task_title_xpath = f'{task_second_title_xpath}//preceding-sibling::android.view.View[1]'
+                                task_title_elm = self.driver.find_element(By.XPATH, task_title_xpath)
                                 # 获取标题
                                 task_title_elm_text = task_title_elm.text
                                 logger.debug(f"任务标题={task_title_elm_text}")
                             except:
                                 logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
-                                # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
                                 break
                     break
 
                 elif '小程序' in task:
-
-                    try:
-                        logger.debug(f"检查任务:【{task}】是否存在")
-                        # task_div = f'//*[@text="{task}"]'
-                        task_second_title_div = f'//*[contains(@text, "{task}")]'
-                        task_second_title = self.driver.find_element(By.XPATH, task_second_title_div)
-                        task_second_title_text = task_second_title.text
-                        logger.debug(f"任务副标题={task_second_title_text}")
-                    except:
-                        logger.warning(f"该任务:【{task}】不执行")
-                        # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
-                        break
-
-                    try:
-                        task_title_div = f'{task_second_title_div}//preceding-sibling::android.view.View[1]'
-                        task_title_elm = self.driver.find_element(By.XPATH, task_title_div)
-                        # 获取标题
-                        task_title_elm_text = task_title_elm.text
-                        logger.debug(f"任务标题={task_title_elm_text}")
-                    except:
-                        logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
-                        # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
-                        break
-
-                    # 判断是否任务跳过
-                    is_continue = self.continue_task(task_title_elm_text)
-
-                    if not is_continue:
-                        logger.warning(f"满足跳过任务关键字，退出2")
+                    continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text = self.print_task_detail(
+                        task)
+                    if not continue_flag:
                         break
 
                     # 开始点击
-                    result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_elm_text}")
+                    result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_text}")
                     now_times = int(result['now_times'])
                     total_times = int(result['total_times'])
                     logger.debug(f"now_times={now_times},total_times={total_times}")
@@ -429,10 +652,8 @@ class JD(object):
                             # 当前节点是index=2，查找节点android.view.View index="3"
                             program_flag = 0
                             try:
-                                # task_title_div = f'{task_second_title_div}//following-sibling::android.view.View[1]'
-                                task_title_div = f'{task_second_title_div}/../android.view.View[@index="3"]'
-                                # logger.debug(f"task_title_div={task_title_div}")
-                                task_button_elm = self.driver.find_element(By.XPATH, task_title_div)
+                                task_button_do_xpath = f'{task_second_title_xpath}/../android.view.View[@index="3"]'
+                                task_button_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
 
                                 if config.DEBUG_HTML:
                                     logger.debug(f'第1次查找:{task_button_elm.get_attribute("bounds")}')
@@ -448,8 +669,8 @@ class JD(object):
                             # todo:修正了上一个定位，可能这个不需要了。
                             if program_flag == 1:
                                 try:
-                                    task_title_div = f'{task_second_title_div}//following-sibling::android.view.View[2]'
-                                    task_button_elm = self.driver.find_element(By.XPATH, task_title_div)
+                                    task_button_do_xpath = f'{task_second_title_xpath}//following-sibling::android.view.View[2]'
+                                    task_button_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
                                     if config.DEBUG_HTML:
                                         logger.debug(f'第2次查找:{task_button_elm.get_attribute("bounds")}')
                                         filename = f"{self.except_html}/program_to_do-2.html"
@@ -464,8 +685,7 @@ class JD(object):
                                     break
 
                             # 开始任务点击
-                            logger.debug(f"任务副标题={task_second_title_text},任务标题={task_title_elm_text}:开始执行")
-                            # logger.debug(task_button_elm.get_attribute("bounds"))
+                            logger.debug(f"任务副标题={task_second_title_text},任务标题={task_title_text}:开始执行")
                             task_button_elm.click()
 
                             # todo: 可能会有bug
@@ -484,8 +704,8 @@ class JD(object):
                             # 更新任务正标题
                             try:
                                 wait_time_bar(2)
-                                task_title_div = f'{task_second_title_div}//preceding-sibling::android.view.View[1]'
-                                task_title_elm = self.driver.find_element(By.XPATH, task_title_div)
+                                task_title_xpath = f'{task_second_title_xpath}//preceding-sibling::android.view.View[1]'
+                                task_title_elm = self.driver.find_element(By.XPATH, task_title_xpath)
                                 # 获取标题
                                 task_title_elm_text = task_title_elm.text
                                 logger.debug(f"任务标题={task_title_elm_text}")
@@ -506,7 +726,6 @@ class JD(object):
 
                             except:
                                 logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
-                                # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
                                 break
                     break
                 else:
@@ -518,16 +737,34 @@ class JD(object):
     # 处理"城城"
     def process_city(self):
 
+        invite_windows_flag = 0
         try:
-            logger.debug(f"处理城城广告窗")
-            city_close_title_div = '''//android.view.View[@resource-id="dialogs"]/android.view.View[2]/android.view.View/android.view.View/android.view.View[3]'''
-            city_close_button_elm = self.driver.find_element(By.XPATH, city_close_title_div)
-            city_close_button_elm.click()
+            logger.debug(f"处理城城【邀请活动新朋友，金额更高噢】弹窗")
+            city_invite_text_div = f'//android.view.View[@text="邀请活动新朋友，金额更高噢"]'
+            self.driver.find_element(By.XPATH, city_invite_text_div)
+
+            close_city_invite_text_div = '''//android.view.View[@resource-id="dialogs"]/android.view.View[2]/android.view.View/android.view.View/android.view.View[1]'''
+            close_city_invite_button_elm = self.driver.find_element(By.XPATH, close_city_invite_text_div)
+            close_city_invite_button_elm.click()
+
+            invite_windows_flag = 1
         except NoSuchElementException:
-            logger.warning(f"没找到关闭城城弹窗")
+            pass
         except:
-            logger.warning(f"关闭城城弹窗异常,不执行。{traceback.format_exc()}")
+            logger.warning(f"关闭城城【邀请活动新朋友，金额更高噢】弹窗异常,不执行。{traceback.format_exc()}")
             return
+
+        if invite_windows_flag == 0:
+            try:
+                logger.debug(f"处理城城广告窗")
+                city_close_title_div = '''//android.view.View[@resource-id="dialogs"]/android.view.View[2]/android.view.View/android.view.View/android.view.View[3]'''
+                city_close_button_elm = self.driver.find_element(By.XPATH, city_close_title_div)
+                city_close_button_elm.click()
+            except NoSuchElementException:
+                logger.warning(f"没找到关闭城城弹窗")
+            except:
+                logger.warning(f"关闭城城弹窗异常,不执行。{traceback.format_exc()}")
+                return
 
         wait_time_bar(3)
         try:
@@ -542,6 +779,8 @@ class JD(object):
         except:
             logger.warning(f"点击【邀3人立领现金】按钮异常,不执行")
             return
+
+        # todo:京口令复制弹窗
 
     #  gzh:testerzhang 点击生产出来的爆竹
     def collect_bomb(self):
@@ -582,7 +821,7 @@ class JD(object):
             if query_sign_div_elm is not None:
                 logger.debug(f"【今日已签到】，不需要签到")
                 return
-        except NoSuchElementException as msg:
+        except NoSuchElementException:
             filename = f"{self.except_html}/sign_detail.html"
             self.write_html(filename)
         except:
@@ -594,7 +833,7 @@ class JD(object):
             sign_div_xpath = f'//android.view.View[@text="签到领红包签到领红包"]'
             sign_div_lists = self.driver.find_element(By.XPATH, sign_div_xpath)
             sign_div_lists.click()
-        except NoSuchElementException as msg:
+        except NoSuchElementException:
             filename = f"{self.except_html}/sign_sign.html"
             self.write_html(filename)
         except:
@@ -622,14 +861,14 @@ class JD(object):
 
                     close_div_elm = self.driver.find_element(By.XPATH, close_div_xpath)
                     close_div_elm.click()
-                except NoSuchElementException as msg:
+                except NoSuchElementException:
                     filename = f"{self.except_html}/sign_after_close.html"
                     self.write_html(filename)
                 except:
                     logger.warning(f"点击[关闭]动作异常={traceback.format_exc()}")
 
                 return
-        except NoSuchElementException as msg:
+        except NoSuchElementException:
             pass
         except:
             logger.warning(f"查找【明天再来明天再来】文字处理异常={traceback.format_exc()}")
@@ -642,7 +881,7 @@ class JD(object):
             if sign_div_elm is not None:
                 logger.debug(f"点击【点我签到】按钮")
                 sign_div_elm.click()
-        except NoSuchElementException as msg:
+        except NoSuchElementException:
             filename = f"{self.except_html}/sign_home_text.html"
             self.write_html(filename)
         except:
@@ -652,14 +891,15 @@ class JD(object):
 
             wait_time_bar(3)
 
+            # todo: 失效，换个写法看看找到关闭元素进行关闭
             try:
                 logger.debug(f"开始点击[开心收下]按钮的关闭按钮")
                 # 开心收下 弹窗
-                sign_close_div_xpath = '//android.view.View[text="开心收下开心收下"]'
+                sign_close_div_xpath = '//android.view.View[text="开心收下开心收下"]/../../../android.view.View[2]'
                 sign_close_div_elm = self.driver.find_element(By.XPATH, sign_close_div_xpath)
                 if sign_div_elm is not None:
                     sign_close_div_elm.click()
-            except Exception as msg:
+            except NoSuchElementException:
                 logger.warning("找不到【开心收下】按钮")
                 filename = f"{self.except_html}/sign_finish_happy.html"
                 self.write_html(filename)
@@ -681,7 +921,11 @@ class JD(object):
                 return
 
             button_div_lists[-1].click()
-        except Exception as msg:
+
+            if config.DEBUG_HTML:
+                filename = f"{self.except_html}/tasks_list_debug.html"
+                self.write_html(filename)
+        except NoSuchElementException:
             logger.warning(f"找不到【{button_name}】按钮")
             filename = f"{self.except_html}/tasks_list_door.html"
             self.write_html(filename)
@@ -693,6 +937,65 @@ class JD(object):
             wait_time_bar(3)
             # 最新任务列表签到
             self.do_task()
+
+    # 只负责点击，后续没其他动作
+    def only_click(self, text, div_xpath, times=0):
+        error_flag = True
+        try:
+            logger.debug(f"尝试点击[{text}]弹窗")
+            # 弹窗
+            # div_xpath = '//android.view.View[text="开心收下开心收下"]'
+            div_elm = self.driver.find_element(By.XPATH, div_xpath)
+            # logger.debug(f"元素是否可以点击={div_elm.get_attribute('clickable')}")
+            # logger.debug(f"元素的坐标={div_elm.get_attribute('bounds')}")
+            if text == "去京东金榜":
+                logger.debug(f"尝试返回")
+                self.driver.back()
+                logger.debug(f"再次尝试返回")
+                self.driver.back()
+                logger.debug(f"尝试点击之后...")
+            else:
+                logger.debug(f"元素是否可以点击={div_elm.get_attribute('clickable')}")
+                # logger.debug(f"元素的坐标={div_elm.get_attribute('bounds')}")
+                div_elm.click()
+            error_flag = False
+
+            if config.DEBUG_HTML and text == "去京东金榜":
+                filename = f"{self.except_html}/public_click-{text}.html"
+                self.write_html(filename)
+        except NoSuchElementException:
+            if times == 0:
+                filename = f"{self.except_html}/public_click-{text}.html"
+            else:
+                filename = f"{self.except_html}/public_click-{text}-{times}.html"
+            self.write_html(filename)
+        except:
+            logger.warning(f"点击[{text}]按钮点击异常={traceback.format_exc()}")
+
+        return error_flag
+
+    # 寻找弹窗关闭窗口
+    def search_close(self, text, div_xpath, times=0):
+        error_flag = True
+        try:
+            logger.debug(f"尝试点击[{text}]弹窗关闭按钮")
+            # 弹窗
+            div_elm = self.driver.find_element(By.XPATH, div_xpath)
+            logger.debug(f"元素是否可以点击={div_elm.get_attribute('clickable')}")
+            logger.debug(f"元素的坐标={div_elm.get_attribute('bounds')}")
+            div_elm.click()
+            error_flag = False
+
+        except NoSuchElementException:
+            if times == 0:
+                filename = f"{self.except_html}/public_click-{text}.html"
+            else:
+                filename = f"{self.except_html}/public_click-{text}-{times}.html"
+            self.write_html(filename)
+        except:
+            logger.warning(f"点击[{text}]按钮点击异常={traceback.format_exc()}")
+
+        return error_flag
 
     #  gzh:testerzhang 首页处理点爆竹
     def zha(self):
@@ -709,10 +1012,10 @@ class JD(object):
             logger.debug(f"开始执行第{times}次")
             if times > max_times:
                 break
+            wait_time_bar(2)
 
             try:
-                wait_time_bar(2)
-                # # 喂猫领红包,每次消耗89000个爆竹
+                # 集爆竹炸年兽,每次消耗89000个爆竹
                 logger.debug("开始点击【集爆竹炸年兽】图标")
                 # 每次消耗89000个爆竹
                 feed_div = '//*[contains(@text, "每次消耗")]'
@@ -730,19 +1033,23 @@ class JD(object):
             else:
                 wait_time_bar(5)
                 # todo: 只处理了两种弹窗，其他弹窗，后续再搞。
-                # 还有 立即完成,开启下一站
-                try:
-                    logger.debug(f"尝试点击[开心收下]弹窗")
-                    # 开心收下 弹窗
-                    receive_div_xpath = '//android.view.View[text="开心收下开心收下"]'
-                    receive_div_elm = self.driver.find_element(By.XPATH, receive_div_xpath)
-                    if receive_div_elm is not None:
-                        receive_div_elm.click()
-                except NoSuchElementException:
-                    filename = f"{self.except_html}/home_bomb-happy-{times}.html"
+                # 还有 立即完成,开启下一站 未测试
+
+                if config.DEBUG_HTML:
+                    filename = f"{self.except_html}/zha-bug-{times}.html"
                     self.write_html(filename)
-                except:
-                    logger.warning(f"点击[开心收下]按钮点击异常={traceback.format_exc()}")
+
+                # 开启下一站 弹窗
+                div_xpath = '//android.view.View[text="开启下一站开启下一站"]/android.view.View'
+                self.only_click("开启下一站", div_xpath, times=0)
+
+                # 立即完成 弹窗，尚未测试
+                div_xpath = '//android.view.View[text="立即完成立即完成"]'
+                self.only_click("立即完成", div_xpath, times=0)
+
+                # 开心收下 弹窗
+                div_xpath = '//android.view.View[text="开心收下开心收下"]/../../../android.view.View[3]'
+                self.search_close("开心收下x按钮", div_xpath, times=0)
 
                 close_flag = 0
 
@@ -757,7 +1064,7 @@ class JD(object):
                         # 退出
                         logger.warning("爆竹不够了，不再执行循环。")
                         break
-                    except NoSuchElementException as msg:
+                    except NoSuchElementException:
                         pass
                     except:
                         logger.warning(f"尝试关闭[任务列表]异常={traceback.format_exc()}")
@@ -778,7 +1085,7 @@ class JD(object):
             windows_button = self.driver.find_element(By.XPATH, windows_div)
             logger.debug(f"windows_button.text=[{windows_button.text}]")
             windows_button.click()
-        except NoSuchElementException as msg:
+        except NoSuchElementException:
             logger.warning(f"忽略")
         except:
             logger.warning(f"弹窗进行处理异常={traceback.format_exc()}")
@@ -798,7 +1105,7 @@ class JD(object):
 
             plus_button.click()
             plus_flag = 1
-        except NoSuchElementException as msg:
+        except NoSuchElementException:
             # logger.warning(f"未找到plus弹窗，忽略")
             pass
         except:
@@ -814,7 +1121,7 @@ class JD(object):
                 sign_div_xpath = f'{self.windows_xpath2}/android.view.View[6]'
                 self.sign_page(sign_div_xpath)
 
-            except NoSuchElementException as msg:
+            except NoSuchElementException:
                 # logger.warning(f"未找到plus弹窗，忽略")
                 pass
             except:
@@ -827,7 +1134,7 @@ class JD(object):
 
                 draw_close_div_elm = self.driver.find_element(By.XPATH, draw_div_xpath)
                 draw_close_div_elm.click()
-            except NoSuchElementException as msg:
+            except NoSuchElementException:
                 logger.warning(f"忽略")
             except:
                 logger.warning(f"尝试关掉[继续环游]弹窗异常={traceback.format_exc()}")
@@ -838,7 +1145,7 @@ class JD(object):
 
                 draw_close_div_elm = self.driver.find_element(By.XPATH, draw_div_xpath)
                 draw_close_div_elm.click()
-            except NoSuchElementException as msg:
+            except NoSuchElementException:
                 logger.warning(f"忽略")
             except:
                 logger.warning(f"尝试关掉[立即抽奖]弹窗异常={traceback.format_exc()}")
