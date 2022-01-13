@@ -1,4 +1,4 @@
-# jd_pc_auto_practise
+# Appium自动化执行APP活动
 
 🔥京东年货节炸年兽🚀
 
@@ -24,7 +24,11 @@
 
     
 
-2. 本人使用的是Python 3.8.6，需要安装相关Python第三方库
+2. 启动上面搭建好的Appium GUI图形界面服务。
+
+   
+
+3. 本人使用的是Python 3.8.6，需要安装相关Python第三方库
 
 ```
 pip3 install -r requirements.txt
@@ -32,7 +36,7 @@ pip3 install -r requirements.txt
 
 
 
-3. 修改配置文件
+4. 修改配置文件
 
 ```
 vim jdconfig.py
@@ -40,7 +44,7 @@ vim jdconfig.py
 
 
 
-4. 运行脚本
+5. 运行脚本
 
 ```
 python3 jd_zha_nian_shou.py
