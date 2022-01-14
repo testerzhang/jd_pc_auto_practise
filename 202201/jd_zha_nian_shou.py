@@ -51,6 +51,7 @@ class JD(object):
 
         self.wait = WebDriverWait(self.driver, config.TIME_OUT)
 
+        self.game_over = False
         self.windows_xpath = config.WINDOWS_XPATH
         self.windows_xpath2 = config.WINDOWS_XPATH2
 
@@ -277,7 +278,11 @@ class JD(object):
 
         for task in task_list:
 
+            if self.game_over:
+                break
+
             while True:
+
                 # 开始做任务
                 logger.debug(f"开始真正做任务列表:【{task}】")
 
@@ -419,6 +424,24 @@ class JD(object):
 
                                 now_times = now_times + 1
 
+                    break
+                elif '底部跳转app' == task:
+                    try:
+                        logger.debug(f"开始点击任务列表底部的横幅")
+                        task_button_do_xpath = f'''//android.view.View[@resource-id="taskPanelBanner"]'''
+                        task_button_do_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
+                        task_button_do_elm.click()
+                        self.do_other_app()
+                    except NoSuchElementException:
+                        filename = f"{self.except_html}/底部跳转app-no-found.html"
+                        self.write_html(filename)
+                    except:
+                        logger.warning(f"该任务:【{task}】获取任务按钮异常,不执行")
+
+                    logger.warning("做【其他任务】完成，直接退出吧")
+                    self.game_over = True
+
+                    ## 不管做啥，都退出
                     break
                 elif '累计浏览' == task:
                     init_loop = 0
@@ -753,6 +776,212 @@ class JD(object):
 
         return
 
+    #  gzh:testerzhang 做任务列表，只做 浏览 任务。
+    def do_jr_task_details(self):
+        try:
+            logger.debug(f"检测是否进入金融app[任务列表]")
+            flag_div = f'//*[@text="累计任务奖励"]'
+            self.driver.find_elements(By.XPATH, flag_div)
+
+            if config.DEBUG_HTML:
+                filename = f"{self.except_html}/jr_task-temp.html"
+                self.write_html(filename)
+        except NoSuchElementException:
+            raise Exception("没成功进入金融app【任务列表】，退出")
+            return
+        except:
+            logger.warning(f"检测是否进入金融app[任务列表]异常={traceback.format_exc()}")
+            return
+
+        # 配置文件配置需要执行的任务清单
+        task_list = config.JR_TASK_LIST
+
+        for task in task_list:
+
+            while True:
+                # 开始做任务
+                logger.debug(f"开始真正做JR任务列表:【{task}】")
+
+                if task in ["去领取"]:
+                    try:
+                        progress_div = f'//*[@text="累计任务奖励"]/../android.view.View[3]/android.view.View/android.view.View'
+                        progress_elm_lists = self.driver.find_elements(By.XPATH, progress_div)
+                        logger.debug(f"找到[去领取]区域长度={len(progress_elm_lists)}")
+                        for i, progress_elm in enumerate(progress_elm_lists, 0):
+                            if i == 0:
+                                continue
+                            logger.debug(f"尝试点击第{i}个[去领取]")
+                            progress_elm.click()
+                            wait_time_bar(2)
+
+                            close_tip_div = f'//android.view.View[contains(@text, "+")]'
+                            close_tip_lists = self.driver.find_elements(By.XPATH, close_tip_div)
+                            if len(close_tip_lists) > 0:
+                                close_tip_elm = close_tip_lists[0]
+                                tips = close_tip_elm.text
+                                logger.debug(f"tips={tips}")
+                                if '爆竹' in tips:
+                                    logger.debug(f"关闭弹窗")
+                                    self.close_windows()
+
+                                wait_time_bar(2)
+
+                    except NoSuchElementException:
+                        filename = f"{self.except_html}/lingqu.html"
+                        self.write_html(filename)
+                    except:
+                        logger.warning(f"[去领取]异常={traceback.format_exc()}")
+                    else:
+                        wait_time_bar(5)
+                    break
+                elif task in ["关闭"]:
+                    self.close_windows()
+
+                    break
+                elif '浏览' in task:
+                    init_loop = 0
+                    max_loop = 3
+                    jump_loop_flag = 0
+
+                    while init_loop < max_loop:
+                        init_loop = init_loop + 1
+
+                        if jump_loop_flag == 1:
+                            logger.debug(f"超过循环次数，退出该类任务。")
+                            break
+
+                        continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text = self.print_task_detail(
+                            task)
+                        if not continue_flag:
+                            break
+
+                        if '浏览并加购' in task_second_title_text:
+                            logger.warning(f"浏览并加购任务不做")
+                            break
+                        # elif '成功入会并浏览可得' in task_second_title_text:
+                        #     logger.warning(f"成功入会任务不做")
+                        #     break
+                        elif '去财富岛' in task_second_title_text:
+                            logger.debug(f"财富岛任务不做")
+                            break
+                        elif '去小程序' in task_second_title_text:
+                            logger.debug(f"去小程序任务不做")
+                            break
+
+                        # 开始点击
+                        result = parse.parse("{temp}({now_times}/{total_times})", f"{task_title_text}")
+                        now_times = int(result['now_times'])
+                        total_times = int(result['total_times'])
+                        logger.debug(f"now_times={now_times},total_times={total_times}")
+                        if now_times == total_times and total_times > 0:
+                            continue
+                        else:
+                            while now_times < total_times:
+                                # 当前节点是index=2，查找节点android.view.View index="3"
+                                try:
+                                    task_button_do_xpath = f'{task_second_title_xpath}//following-sibling::android.view.View[1]'
+                                    task_button_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
+                                except:
+                                    logger.warning(f"该任务:【{task}】获取任务按钮异常,不执行")
+                                    # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
+                                    jump_loop_flag = 1
+                                    break
+
+                                # 开始任务点击
+                                logger.debug(f"任务副标题={task_second_title_text},任务标题={task_title_text}:开始执行")
+                                task_button_elm.click()
+
+                                if '去合成压岁钱' in task_title_text:
+                                    logger.debug(f"去合成压岁钱要去财富岛，尝试直接返回")
+                                elif '浏览并关注可得' in task_second_title_text:
+                                    wait_time_bar(5)
+                                else:
+                                    wait_time_bar(5 + 10)
+
+                                logger.debug(f"返回一下，然后稍微休息")
+                                self.driver.back()
+
+                                wait_time_bar(3)
+
+                                now_times = now_times + 1
+
+                                # 更新任务正标题
+                                try:
+                                    task_title_xpath = f'{task_second_title_xpath}//preceding-sibling::android.view.View[1]'
+                                    task_title_elm = self.driver.find_element(By.XPATH, task_title_xpath)
+                                    # 获取标题
+                                    task_title_text = task_title_elm.text
+                                    logger.debug(f"任务标题={task_title_text}")
+                                except:
+                                    logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
+                                    continue
+
+                    break
+
+                else:
+                    logger.warning(f"其他任务不做:【{task}】")
+                    break
+
+        return
+
+    # 做jr app
+    def do_jr_app_task(self):
+        if config.DEBUG_HTML:
+            filename = f"{self.except_html}/金融app.html"
+            self.write_html(filename)
+
+        try:
+            logger.debug(f"开始点击金融app【任务列表】按钮")
+            button_div_xpath = config.JR_TASK_LISTS_BUTTON_XPATH
+            button_div_lists = self.driver.find_elements(By.XPATH, button_div_xpath)
+            len_button_div_lists = len(button_div_lists)
+            # logger.debug(f"button_div_lists={button_div_lists},len={len_button_div_lists}")
+
+            if len_button_div_lists == 0:
+                logger.warning("没有定位到金融app任务列表按钮元素，可能得手动杀掉进程，返回")
+                return
+
+            button_div_lists[-1].click()
+
+            if config.DEBUG_HTML:
+                filename = f"{self.except_html}/jr_home.html"
+                self.write_html(filename)
+        except NoSuchElementException:
+            logger.warning(f"找不到金融app【任务列表】按钮")
+            filename = f"{self.except_html}/jr_home_no_found.html"
+            self.write_html(filename)
+        except:
+            logger.warning(f"【金融app【任务列表】按钮点击异常={traceback.format_exc()}")
+            filename = f"{self.except_html}/jr_home_exception.html"
+            self.write_html(filename)
+        else:
+            wait_time_bar(3)
+            logger.debug(f"继续做金融的其他任务")
+            self.do_jr_task_details()
+
+    # 做wx app,涉及小程序，不做。
+    def do_wx_app_task(self):
+        pass
+
+    # 做其他任务
+    def do_other_app(self):
+        wait_time_bar(12)
+
+        now_app = self.driver.current_package
+        now_app_activity = self.driver.current_activity
+        logger.debug(f"now_app={now_app},now_app_activity={now_app_activity}")
+
+        if now_app == "com.jd.jrapp":
+            wait_time_bar(10)
+            logger.debug(f"做京东金融任务")
+            self.do_jr_app_task()
+        elif now_app == "com.tencent.mm":
+            wait_time_bar(5)
+            logger.debug(f"做微信任务")
+            self.do_wx_app_task()
+        else:
+            logger.warning("做【其他任务】异常，直接退出吧")
+
     # 处理"城城"
     def process_city(self):
 
@@ -1023,6 +1252,9 @@ class JD(object):
     def zha(self):
         # 加多一层最大次数，防止循环。
         max_times = config.DA_KA_LOOP
+
+        if self.game_over:
+            return
 
         # 检测当前app
         self.detect_app()

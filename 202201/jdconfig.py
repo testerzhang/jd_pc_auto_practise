@@ -63,6 +63,13 @@ WINDOWS_XPATH = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sib
 # 第7个位置
 WINDOWS_XPATH2 = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View'''
 
+# 金融app任务列表按钮
+JR_TASK_LISTS_BUTTON_XPATH = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[3]'''
+
+# WX app任务列表按钮，暂时随便写的
+WX_TASK_LISTS_BUTTON_XPATH = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[3]'''
+
+
 # 任务列表
 TASK_LIST = [
     '去种草城',
@@ -78,6 +85,7 @@ TASK_LIST = [
     '参与城城点击',
     '去组队可得',
     #'成功入会并浏览',
+    #'底部跳转app',
     '关闭'
 ]
 
@@ -86,4 +94,15 @@ SKIP_LIST = [
     # '参与城城点击',
     # '去小程序玩',
     '去加购',
+]
+
+# 金融任务列表
+JR_TASK_LIST = [
+    '浏览8秒领',
+    '浏览领',
+    '浏览分期年货节',
+    '浏览活动',
+    '浏览',
+    '去领取',
+    '关闭'
 ]
