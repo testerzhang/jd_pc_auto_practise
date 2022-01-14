@@ -10,7 +10,7 @@ import traceback
 from appium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 from selenium.webdriver.support import expected_conditions as EC
 from tqdm import tqdm
 import parse
@@ -41,7 +41,14 @@ class JD(object):
 
         url = "http://localhost:{}/wd/hub".format(device_port)
 
-        self.driver = webdriver.Remote(url, desired_caps)
+        try:
+            self.driver = webdriver.Remote(url, desired_caps)
+        except WebDriverException:
+            raise Exception("请手机连接到电脑哦！")
+        except:
+            logger.error(f"异常={traceback.format_exc()}")
+            raise Exception("连接手机出了问题，请检查下")
+
         self.wait = WebDriverWait(self.driver, config.TIME_OUT)
 
         self.windows_xpath = config.WINDOWS_XPATH
@@ -126,7 +133,7 @@ class JD(object):
             search_btn_xpath = '//android.widget.TextView[@content-desc="搜索，按钮"]'
             button = self.wait.until(EC.presence_of_element_located((By.XPATH, search_btn_xpath)))
             button.click()
-            wait_time_bar(5)
+            wait_time_bar(3)
 
             # 废弃寻找元素
             # door_xpath = '//androidx.recyclerview.widget.RecyclerView/android.widget.RelativeLayout[@index="2"]'
@@ -510,12 +517,12 @@ class JD(object):
                         if not continue_flag:
                             break
 
-                        if '成功入会并浏览可得' in task_second_title_text:
-                            logger.warning(f"成功入会任务不做")
-                            break
-                        elif '浏览并加购' in task_second_title_text:
+                        if '浏览并加购' in task_second_title_text:
                             logger.warning(f"浏览并加购任务不做")
                             break
+                        # elif '成功入会并浏览可得' in task_second_title_text:
+                        #     logger.warning(f"成功入会任务不做")
+                        #     break
                         elif '去财富岛' in task_second_title_text:
                             logger.debug(f"财富岛任务不做")
                             break
@@ -558,6 +565,18 @@ class JD(object):
                                     break
                                 elif '浏览并关注可得' in task_second_title_text:
                                     wait_time_bar(5)
+                                elif '成功入会并浏览' in task_second_title_text:
+                                    wait_time_bar(10)
+                                    # 确认授权并加入店铺会员 关键字，就退出循环
+                                    page_source = self.driver.page_source
+
+                                    if '确认授权并加入店铺会员' in page_source:
+                                        logger.warning(f"发现【确认授权并加入店铺会员】，退出循环")
+                                        jump_loop_flag = 1
+                                        self.driver.back()
+                                        break
+                                    else:
+                                        logger.debug("没有触犯规则，继续")
                                 else:
                                     wait_time_bar(5 + 10)
 
@@ -579,8 +598,8 @@ class JD(object):
                                     task_title_xpath = f'{task_second_title_xpath}//preceding-sibling::android.view.View[1]'
                                     task_title_elm = self.driver.find_element(By.XPATH, task_title_xpath)
                                     # 获取标题
-                                    task_title_elm_text = task_title_elm.text
-                                    logger.debug(f"任务标题={task_title_elm_text}")
+                                    task_title_text = task_title_elm.text
+                                    logger.debug(f"任务标题={task_title_text}")
                                 except:
                                     logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
                                     continue
@@ -946,7 +965,8 @@ class JD(object):
             # 弹窗
             # div_xpath = '//android.view.View[text="开心收下开心收下"]'
             div_elm = self.driver.find_element(By.XPATH, div_xpath)
-            # logger.debug(f"元素是否可以点击={div_elm.get_attribute('clickable')}")
+            div_elm_click_enable = div_elm.get_attribute('clickable')
+            # logger.debug(f"元素是否可以点击={div_elm_click_enable}")
             # logger.debug(f"元素的坐标={div_elm.get_attribute('bounds')}")
             if text == "去京东金榜":
                 logger.debug(f"尝试返回")
@@ -955,7 +975,9 @@ class JD(object):
                 self.driver.back()
                 logger.debug(f"尝试点击之后...")
             else:
-                logger.debug(f"元素是否可以点击={div_elm.get_attribute('clickable')}")
+                if div_elm_click_enable:
+                    logger.debug(f"元素状态是可以点击")
+
                 # logger.debug(f"元素的坐标={div_elm.get_attribute('bounds')}")
                 div_elm.click()
             error_flag = False
@@ -1039,15 +1061,15 @@ class JD(object):
                     filename = f"{self.except_html}/zha-bug-{times}.html"
                     self.write_html(filename)
 
-                # 开启下一站 弹窗
+                # todo: 开启下一站 弹窗,还要修正
                 div_xpath = '//android.view.View[text="开启下一站开启下一站"]/android.view.View'
                 self.only_click("开启下一站", div_xpath, times=0)
 
-                # 立即完成 弹窗，尚未测试
+                # todo: 立即完成 弹窗,还要修正
                 div_xpath = '//android.view.View[text="立即完成立即完成"]'
                 self.only_click("立即完成", div_xpath, times=0)
 
-                # 开心收下 弹窗
+                # todo: 开心收下 弹窗,还要修正
                 div_xpath = '//android.view.View[text="开心收下开心收下"]/../../../android.view.View[3]'
                 self.search_close("开心收下x按钮", div_xpath, times=0)
 

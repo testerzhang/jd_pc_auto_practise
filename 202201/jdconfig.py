@@ -10,11 +10,14 @@ DEVICE_PORT = '4723'
 
 # 安卓版本
 ANDROID_VERSION = "11"
+# 此值取自adb devices，没配置默认取第一条记录。连多台手机需要这个值，未试验。
+UUID = "c7106c90"
 DESIRED_CAPS = {
     "platformName": "Android",
     "platformVersion": ANDROID_VERSION,
     # "deviceName": "Android Emulator",
     "deviceName": DEVICE_NAME,
+    # "udid": UUID,
     "appPackage": "com.jingdong.app.mall",
     "appActivity": ".main.MainActivity",
     # 再次启动不需要再次安装
@@ -72,8 +75,9 @@ TASK_LIST = [
     '累计浏览',
     '去领取',
     '去小程序玩',
-    # '参与城城点击',
-    # '去组队可得',
+    '参与城城点击',
+    '去组队可得',
+    #'成功入会并浏览',
     '关闭'
 ]
 
