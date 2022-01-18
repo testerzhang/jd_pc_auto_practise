@@ -225,6 +225,8 @@ class JD(object):
             task_title = self.driver.find_element(By.XPATH, task_title_xpath)
             task_title_text = task_title.text
             logger.debug(f"任务主标题={task_title_text}")
+        except NoSuchElementException:
+            pass
         except:
             logger.warning(f"该任务:【{task}】不执行")
             continue_flag = False
@@ -612,16 +614,18 @@ class JD(object):
 
                                 if browse_success:
                                     logger.debug("返回任务列表")
-                                    # todo: 不能直接跳转，尝试修改待测试
-                                    try:
-                                        logger.debug(f"开始尝试返回任务列表")
-                                        return_views_xpath = f'//android.view.View[@content-desc="返回"]/android.view.View'
-                                        # logger.debug(f"goods_views_xpath={goods_views_xpath}")
-                                        return_views_elm = self.driver.find_element(By.XPATH, return_views_xpath)
-                                        return_views_elm.click()
-                                        wait_time_bar(2)
-                                    except NoSuchElementException:
-                                        logger.warning(f"种草城页面没有找到【返回】按钮")
+                                    self.driver.back()
+                                    # 屏幕点击位置进入活动
+                                    self.click_screen_middle()
+                                    # 加载新页面时间
+                                    wait_time_bar(5)
+                                    button_name = "重新进入:做任务，集爆竹"
+                                    enter_success = self.find_task_list_entrance(button_name)
+                                    if not enter_success:
+                                        logger.error(f"重新进入活动，依然没找到任务列表入口")
+                                    else:
+                                        wait_time_bar(5)
+                                        self.do_task()
 
                                 now_times = now_times + 1
 
@@ -691,6 +695,8 @@ class JD(object):
                                 elif '去京东金榜' in task_title_text:
                                     wait_time_bar(5)
                                 elif '去种草城' in task_title_text:
+                                    wait_time_bar(2)
+                                    self.driver.back()
                                     self.grass_task('去种草城')
                                     jump_loop_flag = 1
                                     break
@@ -1002,7 +1008,7 @@ class JD(object):
 
                                 if '去合成压岁钱' in task_title_text:
                                     logger.debug(f"去合成压岁钱要去财富岛，尝试直接返回")
-                                elif '去瓜分3亿红包' in task_second_title_text:
+                                elif '去瓜分3亿红包' in task_title_text:
                                     wait_time_bar(5 + 10)
                                     return_flag = self.detect_enter_task_lists()
                                     if not return_flag:
@@ -1022,7 +1028,7 @@ class JD(object):
                                 logger.debug(f"返回一下，然后稍微休息")
                                 self.driver.back()
 
-                                wait_time_bar(3)
+                                wait_time_bar(5)
 
                                 now_times = now_times + 1
 
@@ -1097,7 +1103,7 @@ class JD(object):
         logger.debug(f"now_app={now_app},now_app_activity={now_app_activity}")
 
         if now_app == "com.jd.jrapp":
-            wait_time_bar(8+10)
+            wait_time_bar(8 + 10)
             logger.debug(f"做京东金融任务")
             self.do_jr_app_task()
         elif now_app == "com.tencent.mm":
@@ -1261,14 +1267,13 @@ class JD(object):
             logger.warning(f"点击[点我签到]按钮点击异常={traceback.format_exc()}")
         else:
             # todo: 处理弹窗，还没测试。
-
-            wait_time_bar(3)
+            wait_time_bar(5)
 
             # todo: 失效，换个写法看看找到关闭元素进行关闭
             try:
                 logger.debug(f"开始点击[开心收下]按钮的关闭按钮")
                 # 开心收下 弹窗
-                sign_close_div_xpath = '//android.view.View[text="开心收下开心收下"]/../'
+                sign_close_div_xpath = '//android.view.View[text="开心收下开心收下"]/../../../android.view.View[3]/android.view.View'
                 sign_close_div_elm = self.driver.find_element(By.XPATH, sign_close_div_xpath)
                 if sign_div_elm is not None:
                     sign_close_div_elm.click()
@@ -1287,19 +1292,26 @@ class JD(object):
         try:
             logger.debug(f"检测是否进入[任务列表]")
             flag_div = f'//*[@text="累计任务奖励"]'
-            self.driver.find_elements(By.XPATH, flag_div)
+            self.driver.find_element(By.XPATH, flag_div)
             enter_success = True
+            if config.DEBUG_HTML:
+                filename = f"{self.except_html}/detect_enter_task_lists.html"
+                self.write_html(filename)
         except NoSuchElementException:
-            raise Exception("没成功进入【任务列表】，有可能是有两个手导致图层不对，退出")
+            logger.warning("没成功进入【任务列表】，有可能是有两个手导致图层不对，退出")
+            filename = f"{self.except_html}/detect_enter_task_lists-nofound.html"
+            self.write_html(filename)
         except:
-            logger.warning(f"检测是否进入[任务列表]异常={traceback.format_exc()}")
+            logger.error(f"检测是否进入[任务列表]异常={traceback.format_exc()}")
 
         return enter_success
 
-    #  gzh:testerzhang 点击任务列表按钮，然后进入具体的任务列表
-    def do_tasks(self, button_name):
+    # 查找任务列表入口
+    def find_task_list_entrance(self, button_name):
+        enter_success = False
         try:
             logger.debug(f"开始点击[{button_name}]按钮")
+            # 爆竹升级未够的时候在第二个view，够的时候在第三个view
             button_div_xpath = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[2]'''
             button_div_lists = self.driver.find_elements(By.XPATH, button_div_xpath)
             len_button_div_lists = len(button_div_lists)
@@ -1309,6 +1321,7 @@ class JD(object):
                 return
 
             button_div_lists[-1].click()
+            enter_success = True
 
             if config.DEBUG_HTML:
                 filename = f"{self.except_html}/tasks_list_debug.html"
@@ -1321,6 +1334,14 @@ class JD(object):
             logger.warning(f"【{button_name}】点击异常={traceback.format_exc()}")
             filename = f"{self.except_html}/tasks_list_door-other.html"
             self.write_html(filename)
+
+        return enter_success
+
+    #  gzh:testerzhang 点击任务列表按钮，然后进入具体的任务列表
+    def do_tasks(self, button_name):
+        enter_success = self.find_task_list_entrance(button_name)
+        if not enter_success:
+            logger.error(f"没找到任务列表入口")
         else:
             wait_time_bar(5)
 
@@ -1330,38 +1351,55 @@ class JD(object):
                 # 最新任务列表签到
                 self.do_task()
             else:
+                wait_time_bar(3)
                 # todo:先关闭弹窗
-                # div_xpath = '//android.view.View[text="开心收下开心收下"]/../../../android.view.View[3]/android.view.View'
-                div_xpath = '//android.view.View[text="开心收下开心收下"]/..'
+                div_xpath = '//android.view.View[text="开心收下开心收下"]/../../../android.view.View[3]/android.view.View'
                 self.search_close("开心收下x按钮", div_xpath, times=0)
 
-                logger.warning(f"没有检测到进入任务列表，再次尝试")
-                try:
-                    logger.debug(f"再次开始点击[{button_name}]按钮")
-                    button_div_xpath = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[3]'''
-                    button_div_lists = self.driver.find_elements(By.XPATH, button_div_xpath)
-                    len_button_div_lists = len(button_div_lists)
-                    # logger.debug(f"button_div_lists={button_div_lists},len={len_button_div_lists}")
-
-                    if len_button_div_lists == 0:
-                        return
-
-                    button_div_lists[-1].click()
-
-                    if config.DEBUG_HTML:
-                        filename = f"{self.except_html}/tasks_list_debug.html"
-                        self.write_html(filename)
-                except NoSuchElementException:
-                    logger.warning(f"找不到【{button_name}】按钮")
-                    filename = f"{self.except_html}/tasks_list_door.html"
-                    self.write_html(filename)
-                except:
-                    logger.warning(f"【{button_name}】点击异常={traceback.format_exc()}")
-                    filename = f"{self.except_html}/tasks_list_door-other.html"
-                    self.write_html(filename)
+                source = self.driver.page_source
+                if '开心收下开心收下' in source or '开启下一站开启下一站' in source:
+                    logger.warning("还处于【开心收下】或者 【开启下一站】 弹窗，按住返回键，重新进入")
+                    self.driver.back()
+                    # 屏幕点击位置进入活动
+                    self.click_screen_middle()
+                    # 加载新页面时间
+                    wait_time_bar(5)
+                    enter_success = self.find_task_list_entrance(button_name)
+                    if not enter_success:
+                        logger.error(f"重新进入活动，依然没找到任务列表入口")
+                    else:
+                        wait_time_bar(5)
+                        self.do_task()
+                    return
                 else:
-                    wait_time_bar(3)
-                    self.do_task()
+
+                    logger.warning(f"没有检测到进入任务列表，再次尝试")
+                    try:
+                        logger.debug(f"再次开始点击[{button_name}]按钮")
+                        button_div_xpath = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[3]'''
+                        button_div_lists = self.driver.find_elements(By.XPATH, button_div_xpath)
+                        len_button_div_lists = len(button_div_lists)
+                        # logger.debug(f"button_div_lists={button_div_lists},len={len_button_div_lists}")
+
+                        if len_button_div_lists == 0:
+                            return
+
+                        button_div_lists[-1].click()
+
+                        if config.DEBUG_HTML:
+                            filename = f"{self.except_html}/tasks_list_debug.html"
+                            self.write_html(filename)
+                    except NoSuchElementException:
+                        logger.warning(f"找不到【{button_name}】按钮")
+                        filename = f"{self.except_html}/tasks_list_door.html"
+                        self.write_html(filename)
+                    except:
+                        logger.warning(f"【{button_name}】点击异常={traceback.format_exc()}")
+                        filename = f"{self.except_html}/tasks_list_door-other.html"
+                        self.write_html(filename)
+                    else:
+                        wait_time_bar(5)
+                        self.do_task()
 
     # 只负责点击，后续没其他动作
     def only_click(self, text, div_xpath, times=0):
@@ -1420,7 +1458,7 @@ class JD(object):
             else:
                 filename = f"{self.except_html}/public_click-{text}-{times}.html"
             self.write_html(filename)
-            if text == "开心收下x按钮":
+            if text == "开心收下x按钮" and config.DEBUG_HTML:
                 logger.debug(f"self.driver.page_source={self.driver.page_source}")
         except:
             logger.warning(f"点击[{text}]按钮点击异常={traceback.format_exc()}")
