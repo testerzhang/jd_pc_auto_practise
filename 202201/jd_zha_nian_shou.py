@@ -416,12 +416,12 @@ class JD(object):
 
                     try:
                         logger.debug(f"开始【{task}】任务点击")
-                        task_button_do_xpath = f'{task_second_title_xpath}/following-sibling::android.view.View[1]'
+                        task_button_do_xpath = f'{task_title_xpath}/following-sibling::android.view.View[2]'
                         task_button_do_elm = self.driver.find_element(By.XPATH, task_button_do_xpath)
                         task_button_do_elm.click()
 
                         if task in ["玩AR游戏"]:
-                            wait_time_bar(2)
+                            wait_time_bar(4)
                             self.driver.back()
                         else:
                             wait_time_bar(2)
@@ -1115,51 +1115,66 @@ class JD(object):
 
     # 处理"城城"
     def process_city(self):
-        # todo: 还有收下现金弹窗
-        invite_windows_flag = 0
-        try:
-            logger.debug(f"处理城城【邀请活动新朋友，金额更高噢】弹窗")
-            city_invite_text_div = f'//android.view.View[@text="邀请活动新朋友，金额更高噢"]'
-            self.driver.find_element(By.XPATH, city_invite_text_div)
 
-            close_city_invite_text_div = '''//android.view.View[@resource-id="dialogs"]/android.view.View[2]/android.view.View/android.view.View/android.view.View[1]'''
-            close_city_invite_button_elm = self.driver.find_element(By.XPATH, close_city_invite_text_div)
-            close_city_invite_button_elm.click()
-
-            invite_windows_flag = 1
-        except NoSuchElementException:
-            pass
-        except:
-            logger.warning(f"关闭城城【邀请活动新朋友，金额更高噢】弹窗异常,不执行。{traceback.format_exc()}")
-            return
-
-        if invite_windows_flag == 0:
+        if config.CITY_GAME_OVER_FLAG:
+            logger.debug(f"城城【活动已结束】，不会有弹窗")
             try:
-                logger.debug(f"处理城城广告窗")
-                city_close_title_div = '''//android.view.View[@resource-id="dialogs"]/android.view.View[2]/android.view.View/android.view.View/android.view.View[3]'''
-                city_close_button_elm = self.driver.find_element(By.XPATH, city_close_title_div)
-                city_close_button_elm.click()
-            except NoSuchElementException:
-                logger.warning(f"没找到关闭城城弹窗")
+                logger.debug(f"进入城城主页面，点击【查看我的现金】按钮")
+                invite_div = '''//android.view.View[@resource-id="app"]/android.view.View/android.view.View/android.view.View[5]/android.view.View'''
+                invite_button_elm = self.driver.find_element(By.XPATH, invite_div)
+                invite_button_elm.click()
+
+                wait_time_bar(5)
+                self.detect_app()
             except:
-                logger.warning(f"关闭城城弹窗异常,不执行。{traceback.format_exc()}")
+                logger.warning(f"点击【邀3人立领现金】按钮异常,不执行")
                 return
 
-        wait_time_bar(3)
-        try:
-            logger.debug(f"进入城城主页面，点击【邀3人立领现金】按钮")
-            invite_div = '''//android.view.View[@resource-id="app"]/android.view.View/android.view.View/android.view.View[9]/android.view.View[2]'''
-            invite_button_elm = self.driver.find_element(By.XPATH, invite_div)
-            invite_button_elm.click()
+        else:
+            # todo: 还有收下现金弹窗
+            invite_windows_flag = 0
+            try:
+                logger.debug(f"处理城城【邀请活动新朋友，金额更高噢】弹窗")
+                city_invite_text_div = f'//android.view.View[@text="邀请活动新朋友，金额更高噢"]'
+                self.driver.find_element(By.XPATH, city_invite_text_div)
 
-            wait_time_bar(5)
-            # todo:未测试，从微信返回
-            self.detect_app()
-        except:
-            logger.warning(f"点击【邀3人立领现金】按钮异常,不执行")
-            return
+                close_city_invite_text_div = '''//android.view.View[@resource-id="dialogs"]/android.view.View[2]/android.view.View/android.view.View/android.view.View[1]'''
+                close_city_invite_button_elm = self.driver.find_element(By.XPATH, close_city_invite_text_div)
+                close_city_invite_button_elm.click()
 
-        # todo:京口令复制弹窗
+                invite_windows_flag = 1
+            except NoSuchElementException:
+                pass
+            except:
+                logger.warning(f"关闭城城【邀请活动新朋友，金额更高噢】弹窗异常,不执行。{traceback.format_exc()}")
+                return
+
+            if invite_windows_flag == 0:
+                try:
+                    logger.debug(f"处理城城广告窗")
+                    city_close_title_div = '''//android.view.View[@resource-id="dialogs"]/android.view.View[2]/android.view.View/android.view.View/android.view.View[3]'''
+                    city_close_button_elm = self.driver.find_element(By.XPATH, city_close_title_div)
+                    city_close_button_elm.click()
+                except NoSuchElementException:
+                    logger.warning(f"没找到关闭城城弹窗")
+                except:
+                    logger.warning(f"关闭城城弹窗异常,不执行。{traceback.format_exc()}")
+                    return
+
+            wait_time_bar(3)
+            try:
+                logger.debug(f"进入城城主页面，点击【邀3人立领现金】按钮")
+                invite_div = '''//android.view.View[@resource-id="app"]/android.view.View/android.view.View/android.view.View[9]/android.view.View[2]'''
+                invite_button_elm = self.driver.find_element(By.XPATH, invite_div)
+                invite_button_elm.click()
+
+                wait_time_bar(5)
+                self.detect_app()
+            except:
+                logger.warning(f"点击【邀3人立领现金】按钮异常,不执行")
+                return
+
+            # todo:京口令复制弹窗
 
     #  gzh:testerzhang 点击生产出来的爆竹
     def collect_bomb(self):
@@ -1278,9 +1293,24 @@ class JD(object):
                 if sign_div_elm is not None:
                     sign_close_div_elm.click()
             except NoSuchElementException:
-                logger.warning("找不到【开心收下】按钮")
+                logger.warning("找不到【开心收下】按钮,尝试跳出活动再进入")
                 filename = f"{self.except_html}/sign_finish_happy.html"
                 self.write_html(filename)
+
+                button_name = "做任务，集爆竹"
+                self.driver.back()
+                # 屏幕点击位置进入活动
+                self.click_screen_middle()
+                # 加载新页面时间
+                wait_time_bar(5)
+                enter_success = self.find_task_list_entrance(button_name)
+                if not enter_success:
+                    logger.error(f"重新进入活动，依然没找到任务列表入口")
+                else:
+                    wait_time_bar(5)
+                    self.do_task()
+
+
             except:
                 logger.warning(f"点击[开心收下]按钮点击异常={traceback.format_exc()}")
             else:

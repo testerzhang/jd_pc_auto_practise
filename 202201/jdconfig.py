@@ -46,6 +46,10 @@ DO_SIGN_FLAG = True
 DO_TASKS_FLAG = True
 # DO_TASKS_FLAG = False
 
+# 城城分现金活动是否结束
+CITY_GAME_OVER_FLAG = True
+# CITY_GAME_OVER_FLAG = False
+
 # 执行任务:收取爆竹
 RECEIVE_BOMB_FLAG = True
 # RECEIVE_BOMB_FLAG = False
