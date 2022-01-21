@@ -341,22 +341,14 @@ class JD(object):
                     now_times = now_times + 1
 
     #  gzh:testerzhang 做任务列表，还不能做全部，后续再看看。
-    def do_task(self):
+    def do_task(self, detect=False):
 
-        # try:
-        #     logger.debug(f"检测是否进入[任务列表]")
-        #     flag_div = f'//*[@text="累计任务奖励"]'
-        #     self.driver.find_elements(By.XPATH, flag_div)
-        #
-        #     if config.DEBUG_HTML:
-        #         filename = f"{self.except_html}/task-temp.html"
-        #         self.write_html(filename)
-        # except NoSuchElementException:
-        #     raise Exception("没成功进入【任务列表】，退出")
-        #     return
-        # except:
-        #     logger.warning(f"检测是否进入[任务列表]异常={traceback.format_exc()}")
-        #     return
+        if detect:
+            enter_success = self.detect_enter_task_lists()
+
+            if not enter_success:
+                logger.warning(f"没有进入任务列表，退出")
+                return
 
         # 配置文件配置需要执行的任务清单
         task_list = config.TASK_LIST
@@ -625,7 +617,7 @@ class JD(object):
                                         logger.error(f"重新进入活动，依然没找到任务列表入口")
                                     else:
                                         wait_time_bar(5)
-                                        self.do_task()
+                                        self.do_task(detect=True)
 
                                 now_times = now_times + 1
 
@@ -702,6 +694,12 @@ class JD(object):
                                     break
                                 elif '浏览并关注可得' in task_second_title_text:
                                     wait_time_bar(5)
+                                elif '浏览可得10000爆竹' == task_second_title_text:
+                                    if '去成为' in task_title_text:
+                                        jump_loop_flag = 1
+                                        self.driver.back()
+                                        break
+                                    wait_time_bar(2)
                                 elif '成功入会并浏览' in task_second_title_text:
                                     wait_time_bar(10)
                                     # 确认授权并加入店铺会员 关键字，就退出循环
@@ -738,6 +736,7 @@ class JD(object):
                                     # 获取标题
                                     task_title_text = task_title_elm.text
                                     logger.debug(f"任务标题={task_title_text}")
+
                                 except:
                                     logger.warning(f"该任务:【{task}】获取任务标题异常,不执行")
                                     continue
@@ -1308,7 +1307,7 @@ class JD(object):
                     logger.error(f"重新进入活动，依然没找到任务列表入口")
                 else:
                     wait_time_bar(5)
-                    self.do_task()
+                    self.do_task(detect=True)
 
 
             except:
@@ -1399,7 +1398,7 @@ class JD(object):
                         logger.error(f"重新进入活动，依然没找到任务列表入口")
                     else:
                         wait_time_bar(5)
-                        self.do_task()
+                        self.do_task(detect=True)
                     return
                 else:
 
