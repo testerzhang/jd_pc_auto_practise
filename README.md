@@ -1,5 +1,5 @@
 # jd_pc_auto_practise
-🔥京东新春炸年兽Python版本🚀
+🔥2022年京东618热爱奇旅全民分19亿🚀
 
 微信公众号: **testerzhang** ,分享相关技术文章、视频，欢迎关注。
 ![gzh](https://testerzhang.github.io/resources/gzh.png)
@@ -16,7 +16,7 @@
 
 1. 本脚本是自己练习Python+Appium使用，顺便重温下电脑操作手机的自动化知识。
 
-2. 支持2022年的京东炸年兽活动,不一定持续维护。
+2. 支持2022年京东618热爱奇旅全民分19亿,不一定持续维护。
 
 3. **郑重告之，本脚本仅供学习appium知识，其他非法用途后果自行负责，且严禁一切商业使用行为！**
 
@@ -36,7 +36,7 @@
 2. 本人使用的是Python 3.8.6，需要安装相关Python第三方库
 
 ```
-cd 202201
+cd 202206
 pip3 install -r requirements.txt
 ```
 
