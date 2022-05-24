@@ -149,17 +149,15 @@ class JD(object):
             self.write_html(filename)
 
         return True
-
+    # 关闭任务列表窗口
     def close_windows(self):
-        try:
-            count_div = f'//*[@text="累计任务奖励"]/../../android.view.View[1]'
-            count_elm = self.driver.find_element(By.XPATH, count_div)
-            logger.debug(f"点击关闭按钮")
-            count_elm.click()
 
-        except:
-            logger.warning(f"点击关闭异常")
-            # logger.debug(f"【{task}】点击异常={traceback.format_exc()}")
+        div_xpath = f'//*[@text="累计任务奖励"]/preceding-sibling::android.view.View[1]'
+        div_desc = "关闭窗口"
+        filename = "关闭窗口.html"
+        enter_flag = self.single_div_click(div_xpath, div_desc, filename)
+        if enter_flag:
+            wait_time_bar(2)
 
     # task必须是副标题的内容
     def print_task_detail(self, task):
@@ -387,7 +385,7 @@ class JD(object):
 
                 if task in ["去领取"]:
                     try:
-                        progress_div = f'//*[@text="累计任务奖励"]/following-sibling::android.view.View[2]/android.view.View/android.view.View'
+                        progress_div = f'//*[@text="累计任务奖励"]/following-sibling::android.view.View[2]/android.view.View'
                         progress_elm_lists = self.driver.find_elements(By.XPATH, progress_div)
                         logger.debug(f"找到[去领取]区域长度={len(progress_elm_lists)}")
                         for i, progress_elm in enumerate(progress_elm_lists, 0):
@@ -397,8 +395,8 @@ class JD(object):
                             progress_elm.click()
                             wait_time_bar(2)
 
-                            filename = f"{self.except_html}/领取后的弹窗.html"
-                            self.write_html(filename)
+                            # filename = f"{self.except_html}/领取后的弹窗.html"
+                            # self.write_html(filename)
 
                             # todo:新节点未测试
                             div_xpath = '//*[contains(@text, "开心收下开心收下")]'
@@ -407,7 +405,6 @@ class JD(object):
                             enter_flag = self.single_div_click(div_xpath, div_desc, filename)
                             if enter_flag:
                                 wait_time_bar(2)
-                                return
                             else:
                                 div_xpath = '//*[contains(@text, "去用券")]'
                                 div_desc = "去领取后的去用券"
@@ -645,7 +642,7 @@ class JD(object):
                                     self.click_screen_middle()
                                     # 加载新页面时间
                                     wait_time_bar(5)
-                                    button_name = "重新进入:做任务，集爆竹"
+                                    button_name = "重新进入:做任务，集金币"
                                     enter_success = self.find_task_list_entrance(button_name)
                                     if not enter_success:
                                         logger.error(f"重新进入活动，依然没找到任务列表入口")
@@ -721,9 +718,11 @@ class JD(object):
                                     self.driver.back()
                                 elif '签到领188元红包' in task_title_text:
                                     # todo:待测试，会打开京喜
-                                    wait_time_bar(5)
+                                    wait_time_bar(10)
                                     self.driver.back()
-                                    wait_time_bar(1)
+                                    wait_time_bar(2)
+                                    self.driver.back()
+                                    wait_time_bar(2)
                                     self.driver.back()
                                 elif '去京东金榜' in task_title_text:
                                     wait_time_bar(5)
@@ -735,6 +734,10 @@ class JD(object):
                                     break
                                 elif '浏览并关注可得' in task_second_title_text:
                                     wait_time_bar(5)
+                                elif '去逛领券中心抢神券' in task_title_text:
+                                    wait_time_bar(10)
+                                    # 需要返回多一次
+                                    self.driver.back()
                                 elif '浏览可得10000爆竹' == task_second_title_text:
                                     if '去成为' in task_title_text:
                                         jump_loop_flag = 1
@@ -831,8 +834,10 @@ class JD(object):
                                 break
                     break
 
-                elif '小程序' in task:
-                    continue_flag, task_title_xpath, task_second_title_xpath, task_title_text, task_second_title_text = self.print_task_detail(
+                elif '去参与小程序' in task:
+                    continue_flag, task_title_xpath, \
+                    task_second_title_xpath, task_title_text, \
+                    task_second_title_text = self.print_task_detail(
                         task)
                     if not continue_flag:
                         break
@@ -1302,7 +1307,7 @@ class JD(object):
 
     #  gzh:testerzhang 点击每日签到
     def do_sign(self):
-        div_xpath = '//*[contains(@text, "分红")]/../preceding-sibling::android.view.View[1]'
+        div_xpath = '//*[contains(@text, "分红：")]/../preceding-sibling::android.view.View[1]'
         div_desc = "每天签到"
         filename = "sign_enter.html"
         enter_flag = self.single_div_click(div_xpath, div_desc, filename)
@@ -1314,33 +1319,43 @@ class JD(object):
     # 签到页面处理
     def do_sign_window(self):
 
-        div_xpath = f'//android.view.View[@text="明天再来明天再来"]'
-        div_desc = "明天再来明天再来"
-        filename = "sign_home_text.html"
-        close_div_xpath = f'//android.view.View[@text="每天签到领大额红包"]/preceding-sibling::android.view.View[1]/android.view.View'
-        enter_flag = self.single_div_click_close(div_xpath, div_desc, filename, close_div_xpath)
-        if enter_flag:
-            logger.debug(f"点击[{div_desc}]成功")
-            return
-
-        div_xpath = f'//android.view.View[@text="点我签到点我签到"]'
-        div_desc = "点我签到"
-        filename = "sign_home_text.html"
-        enter_flag = self.single_div_click(div_xpath, div_desc, filename)
-        if enter_flag:
-            logger.debug(f"点击[{div_desc}]成功")
-            filename = f"{self.except_html}/签到后弹窗页面.html"
-            self.write_html(filename)
-            # todo: 处理弹窗，还没测试。
-            wait_time_bar(10)
-
-            div_xpath = '//*[contains(@text, "开心收下开心收下")]'
-            div_desc = "签到后开心收下"
-            filename = "签到后开心收下.html"
+        if '明天再来明天再来' in self.driver.page_source:
+            div_xpath = f'//android.view.View[@text="明天再来明天再来"]'
+            div_desc = "明天再来明天再来"
+            filename = "sign_home_text.html"
+            close_div_xpath = f'//android.view.View[@text="每天签到领大额红包"]/preceding-sibling::android.view.View[1]     '
+            enter_flag = self.single_div_click_close(div_xpath, div_desc, filename, close_div_xpath)
+            if enter_flag:
+                logger.debug(f"点击[{div_desc}]成功")
+                return
+        else:
+            div_xpath = f'//android.view.View[@text="点我签到点我签到"]'
+            div_desc = "点我签到"
+            filename = "sign_home_text.html"
             enter_flag = self.single_div_click(div_xpath, div_desc, filename)
             if enter_flag:
-                logger.debug(f"签到后开心收下成功")
-                wait_time_bar(2)
+                logger.debug(f"点击[{div_desc}]成功")
+                filename = f"{self.except_html}/签到后弹窗页面.html"
+                self.write_html(filename)
+
+                wait_time_bar(3)
+
+                div_xpath = '//*[contains(@text, "开心收下开心收下")]'
+                div_desc = "签到后开心收下"
+                filename = "签到后开心收下.html"
+                enter_flag = self.single_div_click(div_xpath, div_desc, filename)
+                if enter_flag:
+                    logger.debug(f"签到后开心收下成功")
+                    wait_time_bar(2)
+                    if '明天再来明天再来' in self.driver.page_source:
+                        div_xpath = f'//android.view.View[@text="明天再来明天再来"]'
+                        div_desc = "明天再来明天再来"
+                        filename = "sign_home_text.html"
+                        close_div_xpath = f'//android.view.View[@text="每天签到领大额红包"]/preceding-sibling::android.view.View[1]     '
+                        enter_flag = self.single_div_click_close(div_xpath, div_desc, filename, close_div_xpath)
+                        if enter_flag:
+                            logger.debug(f"点击[{div_desc}]成功")
+                            return
 
         return
 
@@ -1490,7 +1505,8 @@ class JD(object):
                 filename = "抽奖后立即完成.html"
                 enter_flag = self.single_div_click(div_xpath, div_desc, filename)
                 if enter_flag:
-                    wait_time_bar(2)
+                    wait_time_bar(15)
+                    self.driver.back()
                 else:
                     div_xpath = '//*[contains(@text, "开心收下开心收下")]'
                     div_desc = "抽奖后开心收下"
@@ -1526,8 +1542,7 @@ class JD(object):
 
     # 第一次进入页面，弹窗处理
     def process_windows(self):
-        # todo:判断弹框:继续抽奖
-
+        # todo:判断弹框
         try:
             windows_div = '//android.widget.ImageView[content-desc="返回"]'
             windows_button = self.driver.find_element(By.XPATH, windows_div)
@@ -1540,24 +1555,24 @@ class JD(object):
 
         # plus会员弹窗,未测试。
         plus_flag = 0
-        try:
-            logger.debug(f"看是否有[Plus弹窗]")
-            # plus_div = '//android.view.View[text="送您"]'
-            plus_flag_div = '//android.view.View[text="Plus专享"]'
-            plus_flag_button = self.driver.find_element(By.XPATH, plus_flag_div)
-            logger.debug(f"plus_flag_button.text=[{plus_flag_button.text}]")
-
-            plus_div = '//android.view.View[text="Plus专享"]/../../following-sibling::android.view.View[1]/android.view.View'
-            plus_button = self.driver.find_element(By.XPATH, plus_div)
-            logger.debug(f"plus_button.text=[{plus_button.text}]")
-
-            plus_button.click()
-            plus_flag = 1
-        except NoSuchElementException:
-            # logger.warning(f"未找到plus弹窗，忽略")
-            pass
-        except:
-            logger.warning(f"弹窗进行处理异常={traceback.format_exc()}")
+        # try:
+        #     logger.debug(f"看是否有[Plus弹窗]")
+        #     # plus_div = '//android.view.View[text="送您"]'
+        #     plus_flag_div = '//android.view.View[text="Plus专享"]'
+        #     plus_flag_button = self.driver.find_element(By.XPATH, plus_flag_div)
+        #     logger.debug(f"plus_flag_button.text=[{plus_flag_button.text}]")
+        #
+        #     plus_div = '//android.view.View[text="Plus专享"]/../../following-sibling::android.view.View[1]/android.view.View'
+        #     plus_button = self.driver.find_element(By.XPATH, plus_div)
+        #     logger.debug(f"plus_button.text=[{plus_button.text}]")
+        #
+        #     plus_button.click()
+        #     plus_flag = 1
+        # except NoSuchElementException:
+        #     # logger.warning(f"未找到plus弹窗，忽略")
+        #     pass
+        # except:
+        #     logger.warning(f"弹窗进行处理异常={traceback.format_exc()}")
 
         # 点击plus按钮之后，进入签到弹窗，未测试。
         if plus_flag == 1:
@@ -1576,27 +1591,42 @@ class JD(object):
                 logger.warning(f"弹窗进行处理异常={traceback.format_exc()}")
 
         else:
-            try:
-                logger.debug(f'尝试关掉[继续环游]弹窗')
-                draw_div_xpath = f'{self.windows_xpath2}/android.view.View[3]'
+            logger.debug(f'尝试关掉[继续环游]弹窗')
+            div_xpath = '//*[contains(@text, "继续环游继续环游")]/../preceding-sibling::android.view.View[3]'
+            div_desc = "首页开启继续环游"
+            filename = "首页开启继续环游.html"
+            enter_flag = self.single_div_click(div_xpath, div_desc, filename)
+            if enter_flag:
+                wait_time_bar(2)
+                return plus_flag
 
-                draw_close_div_elm = self.driver.find_element(By.XPATH, draw_div_xpath)
-                draw_close_div_elm.click()
-            except NoSuchElementException:
-                logger.warning(f"忽略")
-            except:
-                logger.warning(f"尝试关掉[继续环游]弹窗异常={traceback.format_exc()}")
+            logger.debug(f'尝试关掉[开心收下]弹窗')
+            div_xpath = '//*[contains(@text, "开心收下开心收下")]/../preceding-sibling::android.view.View[3]'
+            div_desc = "首页开启开心收下"
+            filename = "首页开启开心收下.html"
+            enter_flag = self.single_div_click(div_xpath, div_desc, filename)
+            if enter_flag:
+                wait_time_bar(2)
+                return plus_flag
 
-            try:
-                logger.debug(f'尝试关掉[立即抽奖]弹窗')
-                draw_div_xpath = f'{self.windows_xpath2}/android.view.View[2]/android.view.View[2]'
+            logger.debug(f'尝试关掉[开启今日抽奖]弹窗')
+            div_xpath = '//*[contains(@text, "开启今日抽奖开启今日抽奖")]/../preceding-sibling::android.view.View[3]'
+            div_desc = "首页开启今日抽奖"
+            filename = "首页开启今日抽奖.html"
+            enter_flag = self.single_div_click(div_xpath, div_desc, filename)
+            if enter_flag:
+                wait_time_bar(2)
+                return plus_flag
 
-                draw_close_div_elm = self.driver.find_element(By.XPATH, draw_div_xpath)
-                draw_close_div_elm.click()
-            except NoSuchElementException:
-                logger.warning(f"忽略")
-            except:
-                logger.warning(f"尝试关掉[立即抽奖]弹窗异常={traceback.format_exc()}")
+            logger.debug(f'尝试关掉[立即抽奖]弹窗')
+            div_xpath = '//*[contains(@text, "立即抽奖立即抽奖")]/../preceding-sibling::android.view.View[3]'
+            div_desc = "立即抽奖立即抽奖"
+            filename = "立即抽奖立即抽奖.html"
+            enter_flag = self.single_div_click(div_xpath, div_desc, filename)
+            if enter_flag:
+                wait_time_bar(2)
+                return plus_flag
+
         return plus_flag
 
     #  gzh:testerzhang 进入H5页面
