@@ -66,12 +66,6 @@ DO_DA_KA_FLAG = True
 # 打卡领红包 循环执行次数
 DA_KA_LOOP = 5
 
-# 第6个位置,无效,暂未修正
-WINDOWS_XPATH = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[6]/android.view.View[2]/android.view.View'''
-
-# 第7个位置,无效,暂未修正
-WINDOWS_XPATH2 = '''//android.view.View[@resource-id="homeBtnTeam"]/following-sibling::android.view.View[7]/android.view.View[2]/android.view.View'''
-
 # 金融app任务列表按钮
 JR_TASK_LISTS_BUTTON_XPATH = '''//*[contains(@text, "分红")]/../following-sibling::android.view.View[4]'''
 
