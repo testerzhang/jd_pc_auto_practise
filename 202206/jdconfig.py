@@ -46,10 +46,6 @@ DO_SIGN_FLAG = False
 DO_TASKS_FLAG = True
 #DO_TASKS_FLAG = False
 
-# 执行底部taskPanelBanner
-# 此任务是跳到微信小程序或者金融app
-DO_TASKS_PANEL_FLAG = True
-# DO_TASKS_PANEL_FLAG = False
 
 # 城城分现金活动是否结束
 CITY_GAME_OVER_FLAG = True
@@ -66,9 +62,6 @@ DO_DA_KA_FLAG = True
 # 打卡领红包 循环执行次数
 DA_KA_LOOP = 5
 
-# 金融app任务列表按钮
-JR_TASK_LISTS_BUTTON_XPATH = '''//*[contains(@text, "分红")]/../following-sibling::android.view.View[4]'''
-
 # 累计浏览4个商品的页面关键字
 BROWSE_FOUR_GOODS = "当前页点击浏览4个商品领金币"
 
@@ -82,6 +75,7 @@ TASK_LIST = [
      '浏览并关注',
      '浏览8s可得',
      '浏览可得3000金币',
+     '浏览可得2000',
      '浏览可得4000',
      '浏览可得5000',
      '浏览可得10000',
@@ -93,7 +87,6 @@ TASK_LIST = [
      '去组队可得',
     # '玩AR游戏',
     # '浏览3个品牌墙',
-    # '底部跳转app',
     '关闭'
 ]
 
@@ -104,13 +97,3 @@ SKIP_LIST = [
     '去加购',
 ]
 
-# 金融任务列表
-JR_TASK_LIST = [
-    '浏览8秒领',
-    '浏览领',
-    '浏览分期年货节',
-    '浏览活动',
-    '浏览',
-    '去领取',
-    '关闭'
-]
